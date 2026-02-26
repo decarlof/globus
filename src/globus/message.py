@@ -48,7 +48,7 @@ def send_email(args):
     emails.append(args.primary_beamline_contact_email)
     emails.append(args.secondary_beamline_contact_email)
 
-    if (args.globus_server_name == 'voyager'):
+    if (args.globus_server_name == 'sojourner'):
         s = smtplib.SMTP('mailhost.anl.gov')
         for em in emails:
             if args.msg['To'] is None:

@@ -30,7 +30,6 @@ def basic(filename):
     Get authorization using username and password contained in filename.
     """
     credentials = read_credentials(filename)
-
     username          = credentials[0][0]
     password          = credentials[0][1]
     auth = HTTPBasicAuth(username, password)

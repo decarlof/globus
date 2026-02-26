@@ -29,6 +29,8 @@ def make_dm_username_list(args):
     users = target_prop['beamtime']['proposal']['experimenters']
     log.info('   Adding the primary beamline contact')
     user_ids = {'d' + str(args.primary_beamline_contact_badge)}
+    log.info('   Adding the secondary beamline contact')
+    user_ids.add('d' + str(args.secondary_beamline_contact_badge))
     for u in users:
         log.info('   Adding user {0}, {1}, badge {2}'.format(
                     u['lastName'], u['firstName'], u['badge']))
@@ -43,7 +45,7 @@ def make_username_list(args):
     exp_name = directories.make_directory_name(args)
     try:
         exp_obj = exp_api.getExperimentByName(exp_name)
-        return exp_obj['experimentUsernameList']
+        return exp_obj.get('experimentUsernameList', [])
     except:
         log.error('No such experiment in the DM system: {:s}'.format(exp_name))
         log.error('   Have you run globus dm_init yet?')
@@ -78,43 +80,52 @@ def make_user_email_list(username_list):
         
 
 def create_experiment(args):
-    '''Creates a new DM experiment on Voyager.  Parameters ---------- args : list
-        args is used to extract current year_month, pi_last_name, prop_number, 
-        prop_title and generate a unique DM experiment name in the form of 
-        year-month-PILastName-ProposalNumber
+    '''Creates a new DM experiment on Sojourner.
 
     Returns
     -------
-
     Experiment object
     '''
     dir_name = directories.make_directory_name(args)
     log.info('See if there is already a DM experiment')
     try:
         old_exp = exp_api.getExperimentByName(dir_name)
-        log.warning('   Experiment already exists')
-        return old_exp 
+        log.warning('   Experiment already exists: %s' % old_exp['name'])
+        return old_exp
     except:
         log.info('Creating new DM experiment: {0:s}/{1:s}'.format(args.year_month, dir_name))
-    target_beamtime = scheduling.get_beamtime(args.gup_number, args)
-    start_datetime = datetime.datetime.strptime(
-                        target_beamtime['startTime'],
-                        '%Y-%m-%dT%H:%M:%S%z')
-    end_datetime = datetime.datetime.strptime(
-                        target_beamtime['endTime'],
-                        '%Y-%m-%dT%H:%M:%S%z')
-    new_exp = exp_api.addExperiment(dir_name, typeName = args.experiment_type,
-                        description = args.gup_title, rootPath = args.year_month,
-                        startDate = start_datetime.strftime('%d-%b-%y'),
-                        endDate = end_datetime.strftime('%d-%b-%y'))
-    log.info('   Experiment successfully created!')
-    return new_exp
 
+    if args.manual:
+        # Manual experiment: use dates from args
+        start_date = args.manual_start
+        end_date   = args.manual_end
+    else:
+        # Scheduled experiment: get dates from scheduling system
+        target_beamtime = scheduling.get_beamtime(args.gup_number, args)
+        start_datetime = datetime.datetime.strptime(
+                            target_beamtime['startTime'],
+                            '%Y-%m-%dT%H:%M:%S%z')
+        end_datetime = datetime.datetime.strptime(
+                            target_beamtime['endTime'],
+                            '%Y-%m-%dT%H:%M:%S%z')
+        start_date = start_datetime.strftime('%d-%b-%y')
+        end_date   = end_datetime.strftime('%d-%b-%y')
+
+    try:
+        new_exp = exp_api.addExperiment(dir_name, typeName = args.experiment_type,
+                            description = args.gup_title, rootPath = args.year_month,
+                            startDate = start_date,
+                            endDate = end_date)
+        log.info('   Experiment successfully created: %s' % new_exp['name'])
+        return new_exp
+    except oee:
+        log.warning('   Experiment already exists (caught on create). Retrieving: %s' % dir_name)
+        return exp_api.getExperimentByName(dir_name)
 
 def add_users(exp_obj, username_list):
     '''Add a list of users to a DM experiment
     '''
-    existing_unames = exp_obj['experimentUsernameList']
+    existing_unames = exp_obj.get('experimentUsernameList', [])
     for uname in username_list:
         user_obj = user_api.getUserByUsername(uname)
         if uname in existing_unames:
@@ -186,7 +197,7 @@ def add_user(args):
         log.error('   No appropriate DM experiment found.')
         return
     try:
-        add_users(exp_obj, ['d{:d}'.format(args.edit_user_badge)])
+        add_users(exp_obj, ['d{:d}'.format(args.badge)])
     except:
         log.error('   Problem adding the user.  Check the badge number')
     
@@ -195,7 +206,7 @@ def remove_user(args):
     '''Remove a user from the DM experiment.
     '''
     exp_name = directories.make_directory_name(args)
-    dm_username = 'd{:d}'.format(args.edit_user_badge)
+    dm_username = 'd{:d}'.format(args.badge)
     try:
         user_to_remove = user_api.getUserByUsername(dm_username)
     except:
@@ -213,25 +224,49 @@ def remove_user(args):
     except:
         log.error('   Problem removing the user.  Check the badge number')
 
-
 def list_users(args):
     '''Lists the users on the current experiment in a nice format.
+    First tries the DM experiment. If not found, lists users from the
+    scheduling system proposal.
     '''
-    log.info('Listing the users on the DM experiment')
     exp_name = directories.make_directory_name(args)
+
+
+    # Try the DM experiment first
     try:
         exp_obj = exp_api.getExperimentByName(exp_name)
+        log.info('Listing the users on the DM experiment: %s' % exp_name)
+        username_list = exp_obj.get('experimentUsernameList', [])
+        if len(username_list) == 0:
+            log.info('   No users for this experiment')
+            return
+        for uname in username_list:
+            user_obj = user_api.getUserByUsername(uname)
+            log.info('   User {0:s}, badge {1:s} is on the DM experiment'.format(
+                        make_pretty_user_name(user_obj), user_obj['badge']))
+        return
     except:
-        log.error('   No appropriate DM experiment found.')
+        pass
+
+    # No DM experiment found — list users from the scheduling system proposal
+    log.info('No DM experiment found for: %s' % exp_name)
+    log.info('Listing users from the scheduling system proposal (GUP %s)' % args.gup_number)
+    target_prop = scheduling.get_beamtime(str(args.gup_number), args)
+    if target_prop is None:
+        log.error('   No beamtime found for GUP %s' % args.gup_number)
         return
-    username_list = exp_obj['experimentUsernameList']
-    if len(username_list) == 0:
-        log.info('   No users for this experiment')
+    users = target_prop['beamtime']['proposal']['experimenters']
+    if len(users) == 0:
+        log.info('   No users on this proposal')
         return
-    for uname in username_list:
-        user_obj = user_api.getUserByUsername(uname)
-        log.info('   User {0:s}, badge {1:s} is on the DM experiment'.format(
-                    make_pretty_user_name(user_obj), user_obj['badge']))
+    for u in users:
+        pi_flag = ' (PI)' if u.get('piFlag') == 'Y' else ''
+        log.info('   User {0:s}, {1:s}, badge {2:s}, {3:s}{4:s}'.format(
+                    u['lastName'], u['firstName'], u['badge'],
+                    u.get('email', 'no email'), pi_flag))
+
+
+
 
 
 def list_users_this_dm_exp(args):
@@ -245,7 +280,7 @@ def list_users_this_dm_exp(args):
     except:
         log.error('   No appropriate DM experiment found.')
         return None
-    username_list = exp_obj['experimentUsernameList']
+    username_list = exp_obj.get('experimentUsernameList', [])
     if len(username_list) == 0:
         log.info('   No users for this experiment')
         return None

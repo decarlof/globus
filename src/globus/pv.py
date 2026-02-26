@@ -6,13 +6,12 @@ import numpy as np
 def init_general_PVs(args):
 
     global_PVs = {}
-    prefix = args.ioc_prefix
-    scan_prefix = args.tomoscan_prefix
-    global_PVs['ExperimentYearMonth'] = PV(prefix + scan_prefix + args.experiment_year_month)
-    global_PVs['UserEmail'] = PV(prefix + scan_prefix + args.user_email)
-    global_PVs['UserLastName'] = PV(prefix + scan_prefix + args.user_last_name)
-    global_PVs['ProposalNumber'] = PV(prefix + scan_prefix + args.proposal_number)
-    global_PVs['ProposalTitle'] = PV(prefix + scan_prefix + args.proposal_title)
+
+    global_PVs['ExperimentYearMonth'] = PV(args.tomoscan_prefix + 'ExperimentYearMonth')
+    global_PVs['UserEmail'] = PV(args.tomoscan_prefix + 'UserEmail')
+    global_PVs['UserLastName'] = PV(args.tomoscan_prefix + 'UserLastName')
+    global_PVs['ProposalNumber'] = PV(args.tomoscan_prefix + 'ProposalNumber')
+    global_PVs['ProposalTitle'] = PV(args.tomoscan_prefix + 'ProposalTitle')
 
     return global_PVs
 
@@ -31,3 +30,5 @@ def update_experiment_info(args):
     gup_number = global_PVs['ProposalNumber'].get(as_string=True)   
     gup_title = global_PVs['ProposalTitle'].get(as_string=True)
     return year_month, pi_last_name, gup_number, gup_title
+
+

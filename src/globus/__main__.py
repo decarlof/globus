@@ -7,8 +7,9 @@ import argparse
 import pathlib
 import logging
 import time
-from datetime import datetime
-from dmagic import scheduling
+from datetime import datetime, timedelta
+
+from globus import scheduling
 
 from globus import config
 from globus import dm
@@ -41,7 +42,7 @@ def show(args):
 def email(args):
 
     '''Sends an email to all users on the current experiment 
-    with information on how to get their data from Voyager.
+    with information on how to get their data from Sojourner.
     '''
     log.info('Sending e-mail to users on the DM experiment')
     # prepare the message
@@ -52,33 +53,28 @@ def email(args):
     # send the message
     message.send_email(args)
 
-
-def dirs(args):
-    # create directory on detector computer
-    log.info('Making directory on the detector computer {:s}'.format(args.detector))
-    detector_dir_name = directories.create_detector_dir_name(args)
-    remote_server = args.detector_user_name + '@' + args.detector
-    directories.mkdir(remote_server, detector_dir_name)
-
-    # create directory on data analysis computer
-    log.info('Making directory on the analysis computer {:s}'.format(args.analysis))
-    analysis_dir_name = directories.create_analysis_dir_name(args)
-    remote_server = args.analysis_user_name + '@' + args.analysis
-    directories.mkdir(remote_server, analysis_dir_name)
- 
-
 def init(args):
     '''Initiate data management
     '''
-    # Create an experiment in the DM system
-    # Add users to this experiment
-    if (args.globus_server_name == 'voyager'):
+    if (args.globus_server_name == 'sojourner'):
         new_exp = dm.create_experiment(args)
-        user_list = dm.make_dm_username_list(args)
-        log.info('Adding users from the current proposal to the DM experiment.')
+        if args.manual:
+            # Build user list from --manual-badges
+            user_list = set()
+            # Always add beamline contacts
+            user_list.add('d' + str(args.primary_beamline_contact_badge))
+            user_list.add('d' + str(args.secondary_beamline_contact_badge))
+            # Add manually specified badges
+            if args.manual_badges:
+                for badge in args.manual_badges.split(','):
+                    badge = badge.strip()
+                    if badge:
+                        user_list.add('d' + badge)
+            log.info('Adding manual users to the DM experiment.')
+        else:
+            user_list = dm.make_dm_username_list(args)
+            log.info('Adding users from the current proposal to the DM experiment.')
         dm.add_users(new_exp, user_list)
-    # Create or refresh a globus access token
-    # Create directory on the globus server 
     elif (args.globus_server_name == 'petrel'):
         globus.refresh_globus_token(args)
         ac, tc = globus.create_clients(args)
@@ -129,7 +125,6 @@ def main():
         ('config',      set_config,     globus_params,  "Create configuration file"),
         ('show',        show,           globus_params,  "Show status"),
         ('init',        init,           globus_params,  "Initialize data mamagement"),
-        ('dirs',        dirs,           globus_params,  "Create folders on data collection and data analysis computers"),
         ('list_users',  list_users,     globus_params,  "List the users on the current DM experiment"),
         ('add_user',    add_user,       globus_params,  "Add a user to the current DM experiment by badge number"),
         ('remove_user', remove_user,    globus_params,  "Remove a user from the current DM experiment by badge number"),
@@ -147,6 +142,12 @@ def main():
         cmd_parser.set_defaults(_func=func)
 
     args = config.parse_known_args(parser, subparser=True)
+
+    # If no subcommand was provided, print help and exit
+    if not hasattr(args, '_func'):
+        parser.print_help()
+        sys.exit(0)
+   
   
     #Do config here, because otherwise we won't have PVs to update our info anyway
     if args._func == set_config:
@@ -158,9 +159,9 @@ def main():
             sys.exit(1)
         return
 
-    if (args.globus_server_name == 'voyager'):
-        args.globus_server_uuid = '9c9cb97e-de86-11e6-9d15-22000a1e3b52'
-        args.globus_server_top_dir = '/gdata/dm/7BM'
+    if (args.globus_server_name == 'sojourner'):
+        args.globus_server_uuid = '054a0877-97ca-4d80-947f-47ca522b173e'
+        # args.globus_server_top_dir = '/gdata/dm/7BM'
     elif (args.globus_server_name == 'petrel'):
         args.globus_server_uuid = 'e133a81a-6d04-11e5-ba46-22000b92c6ec'
         args.globus_app_uuid = 'a9badd00-39c3-4473-b180-8bccc113ba1d' # for usr32idc/petrel
@@ -170,7 +171,59 @@ def main():
         exit()
 
     #Init here, otherwise we don't have parameters to do the following updates
-    args.year_month, args.pi_last_name, args.gup_number, args.gup_title = pv.update_experiment_info(args)
+
+    if args.manual:
+        now = datetime.now()
+        args.year_month    = now.strftime('%Y-%m')
+        args.pi_last_name  = args.manual_name
+        args.gup_number    = '0'
+        args.gup_title     = args.manual_title
+        args.manual_start  = now.strftime('%d-%b-%y')
+        args.manual_end    = (now + timedelta(days=14)).strftime('%d-%b-%y')
+        log.info(f"Manual experiment: {args.year_month}-{args.pi_last_name}, "
+                 f"title: {args.gup_title}")
+
+    elif args.set != 0:
+        # Past experiment: retrieve info from the scheduling system
+        beamtimes = scheduling.list_beamtimes(args)
+        if not beamtimes:
+            log.error("No beamtimes found for the given --set offset")
+            sys.exit(1)
+        elif len(beamtimes) == 1:
+            bt = beamtimes[0]
+            log.info(f"Found 1 beamtime in past run: GUP {bt['gup_number']} "
+                     f"(PI: {bt['pi_last_name']}, {bt['gup_title'][:60]})")
+        else:
+            log.info(f"Found {len(beamtimes)} beamtimes in past run {beamtimes[0]['run_name']}:")
+            for i, bt in enumerate(beamtimes):
+                print(f"  [{i}] GUP {bt['gup_number']} - PI: {bt['pi_last_name']} - "
+                      f"{bt['gup_title'][:70]}")
+                print(f"       {bt['start_time']} to {bt['end_time']}")
+            while True:
+                try:
+                    choice = int(input(f"\nSelect beamtime [0-{len(beamtimes)-1}]: "))
+                    if 0 <= choice < len(beamtimes):
+                        bt = beamtimes[choice]
+                        break
+                    print(f"Please enter a number between 0 and {len(beamtimes)-1}")
+                except (ValueError, EOFError):
+                    print("Invalid input. Please enter a number.")
+
+
+        args.year_month   = bt['year_month']
+        args.pi_last_name = bt['pi_last_name']
+        args.gup_number   = bt['gup_number']
+        args.gup_title    = bt['gup_title']
+        log.info(f"Using past experiment: {args.year_month}, "
+                 f"PI: {args.pi_last_name}, GUP: {args.gup_number}")
+    else:
+        # Current experiment: read from EPICS PVs
+        args.year_month, args.pi_last_name, args.gup_number, args.gup_title = pv.update_experiment_info(args)
+
+
+
+
+
 
     required_args = {
         'year_month': args.year_month,
@@ -181,9 +234,15 @@ def main():
 
     for name, value in required_args.items():
         if value is None:
-            log.error(f"Error: Required argument '{name}' is missing. Check that tomoscan with prefix %s%s is up and running" % (args.ioc_prefix, args.tomoscan_prefix))
-            log.error(f"To change the tomoscan name use options: --ioc-prefix %s --tomoscan-prefix %s" % (args.ioc_prefix, args.tomoscan_prefix))
+            log.error(f"Error: Required argument '{name}' is missing. "
+                      f"Check that tomoscan with prefix {args.tomoscan_prefix} is up and running")
             sys.exit(1)
+
+    # Save CLI parameters to config file so they become the new defaults
+    # Reset 'set' to 0 — it's a one-time offset, not a persistent setting
+    args.set = 0
+    sections = config.GLOBUS_PARAMS
+    config.write(args.config, args=args, sections=sections)
 
     if args._func == init:
         try:

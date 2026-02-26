@@ -33,7 +33,6 @@ def current_run(args):
     start_times = [item['startTime'] for item in reply]
     end_times   = [item['endTime']   for item in reply]
     runs        = [item['runName']   for item in reply]
-    
     time_now = dt.datetime.now(pytz.timezone('America/Chicago')) + dt.timedelta(args.set)
     for i in range(len(start_times)):
         prop_start = dt.datetime.fromisoformat(fix_iso(start_times[i]))
@@ -58,7 +57,6 @@ def get_beamtime(gup_number, args):
     item : dict-like object
         Beamtime information for the target beamtime
     """
-    import pdb; pdb.set_trace()
     auth = authorize.basic(args.credentials)
     end_point = "beamline-scheduling/sched-api/activity/findByRunNameAndBeamlineId"
     run_name = current_run(args)
@@ -69,14 +67,62 @@ def get_beamtime(gup_number, args):
         log.error("No response from the restAPI. Error: %s" % reply.status_code)    
         return None
     for item in reply.json():
-        print(item['beamtime']['proposal'])
-        print(item['beamtime']['proposal']['gupId'])
+        # log.info(item['beamtime']['proposal'])
+        # log.info(item['beamtime']['proposal']['gupId'])
         if int(item['beamtime']['proposal']['gupId']) == int(gup_number):
             log.info("Beamtime for GUP {0} found in run {1}".format(gup_number, run_name))
             return item
     log.error(f"No beamtime from proposal {gup_number} found in run {run_name}")
     return None
 
+
+def list_beamtimes(args):
+    """
+    List all beamtimes for the run determined by the --set offset.
+
+
+    Returns
+    -------
+    list of dict
+        Each dict contains: gup_number, pi_last_name, gup_title, year_month, start_time, end_time
+    """
+    auth = authorize.basic(args.credentials)
+    end_point = "beamline-scheduling/sched-api/activity/findByRunNameAndBeamlineId"
+    run_name = current_run(args)
+    if run_name is None:
+        log.error("Could not determine run for the given --set offset")
+        return []
+    api_url = (args.url + '/' + end_point +
+                '/' + run_name + '/' + args.beamline)
+    reply = requests.get(api_url, auth=auth)
+    if reply.status_code == 404:
+        log.error("No response from the restAPI. Error: %s" % reply.status_code)
+        return []
+
+    beamtimes = []
+    for item in reply.json():
+        proposal = item['beamtime']['proposal']
+        # Find the PI
+        pi_last_name = 'Unknown'
+        for exp in proposal.get('experimenters', []):
+            if exp.get('piFlag') == 'Y':
+                pi_last_name = exp['lastName']
+                break
+
+        start_dt = dt.datetime.fromisoformat(fix_iso(item['startTime']))
+        year_month = start_dt.strftime('%Y-%m')
+
+        beamtimes.append({
+            'gup_number': str(proposal['gupId']),
+            'gup_title': proposal.get('proposalTitle', ''),
+            'pi_last_name': pi_last_name,
+            'year_month': year_month,
+            'start_time': item['startTime'],
+            'end_time': item['endTime'],
+            'run_name': run_name,
+        })
+
+    return beamtimes
 
 def fix_iso(s):
     """
