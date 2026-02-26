@@ -11,6 +11,7 @@ setup(
     package_dir={"": "src"},
     entry_points={'console_scripts':['globus = globus.__main__:main'],},
     packages=find_packages('src'),
+    package_data={'globus': ['*.txt']},
     description='cli to run globus at 2-bm',
     zip_safe=False,
 )

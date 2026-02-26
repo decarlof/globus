@@ -1,19 +1,16 @@
 import datetime
-import json
-import requests
-import dm
-import dmagic
+
+from dm import ExperimentDsApi, UserDsApi, ExperimentDaqApi
+from dm.common.exceptions.objectAlreadyExists import ObjectAlreadyExists
 
 from globus import log
-from globus import pv
 from globus import directories
-from globus import authorize
 from globus import scheduling
 
-exp_api = dm.ExperimentDsApi()
-user_api = dm.UserDsApi()
-daq_api = dm.ExperimentDaqApi()
-oee = dm.common.exceptions.objectAlreadyExists.ObjectAlreadyExists
+exp_api = ExperimentDsApi()
+user_api = UserDsApi()
+daq_api = ExperimentDaqApi()
+oee = ObjectAlreadyExists
 
 __author__ = "Alan L Kastengren"
 __copyright__ = "Copyright (c) 2020, UChicago Argonne, LLC."
@@ -46,9 +43,10 @@ def make_username_list(args):
     try:
         exp_obj = exp_api.getExperimentByName(exp_name)
         return exp_obj.get('experimentUsernameList', [])
-    except:
+    except Exception as e:
         log.error('No such experiment in the DM system: {:s}'.format(exp_name))
-        log.error('   Have you run globus dm_init yet?')
+        log.error('   Error: %s' % str(e))
+        log.error('   Have you run globus init yet?')
         return []
 
 
@@ -74,8 +72,8 @@ def make_user_email_list(username_list):
             user_obj = user_api.getUserByUsername(u)
             email_list.append(user_obj['email'])
             log.info('   Added email {:s} for user {:s}'.format(email_list[-1], u))
-        except:
-            log.warning('   Problem loading email for user {:s}'.format(u))
+        except Exception as e:
+            log.warning('   Problem loading email for user {:s}: {:s}'.format(u, str(e)))
     return email_list
         
 
@@ -92,8 +90,13 @@ def create_experiment(args):
         old_exp = exp_api.getExperimentByName(dir_name)
         log.warning('   Experiment already exists: %s' % old_exp['name'])
         return old_exp
-    except:
-        log.info('Creating new DM experiment: {0:s}/{1:s}'.format(args.year_month, dir_name))
+    except oee:
+        pass  # Experiment doesn't exist, continue to create it
+    except Exception as e:
+        log.error('   Could not query DM system: %s' % str(e))
+        return None
+
+    log.info('Creating new DM experiment: {0:s}/{1:s}'.format(args.year_month, dir_name))
 
     if args.manual:
         # Manual experiment: use dates from args
@@ -102,6 +105,9 @@ def create_experiment(args):
     else:
         # Scheduled experiment: get dates from scheduling system
         target_beamtime = scheduling.get_beamtime(args.gup_number, args)
+        if target_beamtime is None:
+            log.error('   Could not find beamtime for GUP %s' % args.gup_number)
+            return None
         start_datetime = datetime.datetime.strptime(
                             target_beamtime['startTime'],
                             '%Y-%m-%dT%H:%M:%S%z')
@@ -121,6 +127,9 @@ def create_experiment(args):
     except oee:
         log.warning('   Experiment already exists (caught on create). Retrieving: %s' % dir_name)
         return exp_api.getExperimentByName(dir_name)
+    except Exception as e:
+        log.error('   Could not create DM experiment: %s' % str(e))
+        return None
 
 
 def add_users(exp_obj, username_list):
@@ -128,14 +137,21 @@ def add_users(exp_obj, username_list):
     '''
     existing_unames = exp_obj.get('experimentUsernameList', [])
     for uname in username_list:
-        user_obj = user_api.getUserByUsername(uname)
+        try:
+            user_obj = user_api.getUserByUsername(uname)
+        except Exception as e:
+            log.error('   Could not find user {:s}: {:s}'.format(uname, str(e)))
+            continue
         if uname in existing_unames:
             log.warning('   User {:s} is already a user for the experiment'.format(
                         make_pretty_user_name(user_obj)))
             continue
-        user_api.addUserExperimentRole(uname, 'User', exp_obj['name'])
-        log.info('   Added user {0:s} to the DM experiment'.format(
-                    make_pretty_user_name(user_obj)))
+        try:
+            user_api.addUserExperimentRole(uname, 'User', exp_obj['name'])
+            log.info('   Added user {0:s} to the DM experiment'.format(
+                        make_pretty_user_name(user_obj)))
+        except Exception as e:
+            log.error('   Could not add user {:s}: {:s}'.format(uname, str(e)))
 
 def start_daq(args):
     '''Starts the data managememnt (DM) data acquisition (DAQ) system. 
@@ -161,14 +177,21 @@ def start_daq(args):
         return    
     dm_dir_name = "@{0:s}:{1:s}".format(args.analysis,analysis_dir_name)
     log.info('Check to make sure the appropriate DAQ is not already running.')
-    current_daqs = daq_api.listDaqs()
+    try:
+        current_daqs = daq_api.listDaqs()
+    except Exception as e:
+        log.error('   Could not list DAQs: %s' % str(e))
+        return
     for d in current_daqs:
         if (d['experimentName'] == exp_name and d['status'] == 'running'
             and d['dataDirectory'] == dm_dir_name):
             log.warning('   DAQ is already running.  Returning.')
             return
     log.info('Add a DAQ to experiment {:s}'.format(exp_name))
-    daq_obj = daq_api.startDaq(exp_name, dm_dir_name)
+    try:
+        daq_obj = daq_api.startDaq(exp_name, dm_dir_name)
+    except Exception as e:
+        log.error('   Could not start DAQ: %s' % str(e))
 
 
 def stop_daq(args):
@@ -176,13 +199,20 @@ def stop_daq(args):
     '''
     exp_name = directories.make_directory_name(args)
     log.info('Stopping all DM DAQs for experiment {:s}'.format(exp_name))
-    daqs = daq_api.listDaqs()
+    try:
+        daqs = daq_api.listDaqs()
+    except Exception as e:
+        log.error('   Could not list DAQs: %s' % str(e))
+        return
     removed_daq_counter = 0
     for d in daqs:
         if d['experimentName'] == exp_name and d['status'] == 'running':
             log.info('   Found running DAQ for this experiment.  Stopping now.')
-            daq_api.stopDaq(d['experimentName'],d['dataDirectory'])
-            removed_daq_counter += 1
+            try:
+                daq_api.stopDaq(d['experimentName'],d['dataDirectory'])
+                removed_daq_counter += 1
+            except Exception as e:
+                log.error('   Could not stop DAQ: %s' % str(e))
     if removed_daq_counter == 0:
         log.info('   No active DAQs for this experiment were found')
 
@@ -193,13 +223,13 @@ def add_user(args):
     exp_name = directories.make_directory_name(args)
     try:
         exp_obj = exp_api.getExperimentByName(exp_name)
-    except:
-        log.error('   No appropriate DM experiment found.')
+    except Exception as e:
+        log.error('   No appropriate DM experiment found: %s' % str(e))
         return
     try:
         add_users(exp_obj, ['d{:d}'.format(args.badge)])
-    except:
-        log.error('   Problem adding the user.  Check the badge number')
+    except Exception as e:
+        log.error('   Problem adding the user: %s' % str(e))
     
 
 def remove_user(args):
@@ -209,20 +239,20 @@ def remove_user(args):
     dm_username = 'd{:d}'.format(args.badge)
     try:
         user_to_remove = user_api.getUserByUsername(dm_username)
-    except:
-        log.error('   Problem retrieving user information.  Check the badge number')
+    except Exception as e:
+        log.error('   Problem retrieving user information: %s' % str(e))
         return
     log.info('Removing user {0:s} from experiment {1:s}'.format(
                 make_pretty_user_name(user_to_remove), exp_name))
     try:
         exp_obj = exp_api.getExperimentByName(exp_name)
-    except:
-        log.error('    No appropriate DM experiment found.')
+    except Exception as e:
+        log.error('    No appropriate DM experiment found: %s' % str(e))
         return
     try:
         user_api.deleteUserExperimentRole(dm_username, 'User', exp_name)
-    except:
-        log.error('   Problem removing the user.  Check the badge number')
+    except Exception as e:
+        log.error('   Problem removing the user: %s' % str(e))
 
 
 def list_users(args):
@@ -231,7 +261,6 @@ def list_users(args):
     scheduling system proposal.
     '''
     exp_name = directories.make_directory_name(args)
-
 
     # Try the DM experiment first
     try:
@@ -242,12 +271,15 @@ def list_users(args):
             log.info('   No users for this experiment')
             return
         for uname in username_list:
-            user_obj = user_api.getUserByUsername(uname)
-            log.info('   User {0:s}, badge {1:s} is on the DM experiment'.format(
-                        make_pretty_user_name(user_obj), user_obj['badge']))
+            try:
+                user_obj = user_api.getUserByUsername(uname)
+                log.info('   User {0:s}, badge {1:s} is on the DM experiment'.format(
+                            make_pretty_user_name(user_obj), user_obj['badge']))
+            except Exception as e:
+                log.warning('   Could not retrieve info for user {:s}: {:s}'.format(uname, str(e)))
         return
-    except:
-        pass
+    except Exception as e:
+        log.warning('   Could not query DM experiment: %s' % str(e))
 
     # No DM experiment found — list users from the scheduling system proposal
     log.info('No DM experiment found for: %s' % exp_name)
@@ -275,8 +307,8 @@ def list_users_this_dm_exp(args):
     exp_name = directories.make_directory_name(args)
     try:
         exp_obj = exp_api.getExperimentByName(exp_name)
-    except:
-        log.error('   No appropriate DM experiment found.')
+    except Exception as e:
+        log.error('   No appropriate DM experiment found: %s' % str(e))
         return None
     username_list = exp_obj.get('experimentUsernameList', [])
     if len(username_list) == 0:
@@ -305,7 +337,10 @@ def make_data_link(args):
     users so they can access their data directly.
     '''
     exp_name = directories.make_directory_name(args)
-    target_exp = exp_api.getExperimentByName(exp_name)
+    try:
+        target_exp = exp_api.getExperimentByName(exp_name)
+    except Exception as e:
+        log.error('   Could not find DM experiment for data link: %s' % str(e))
 
     output_link = 'https://app.globus.org/file-manager?origin_id='
     output_link += args.globus_server_uuid

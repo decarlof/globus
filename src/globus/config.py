@@ -8,7 +8,6 @@ from collections import OrderedDict
 from globus import log
 
 CONFIG_FILE_NAME = os.path.join(str(pathlib.Path.home()), 'globus.conf')
-TOKEN_FILE_NAME = os.path.join(str(pathlib.Path.home()), 'token.npy')
 CREDENTIALS_FILE_NAME = os.path.join(str(pathlib.Path.home()), '.scheduling_credentials')
 
 SECTIONS = OrderedDict()
@@ -18,11 +17,6 @@ SECTIONS['general'] = {
         'default': CONFIG_FILE_NAME,
         'type': str,
         'help': "File name of configuration",
-        'metavar': 'FILE'},
-    'globus-token-file': {
-        'default': TOKEN_FILE_NAME,
-        'type': str,
-        'help': "File name containing the globus access token",
         'metavar': 'FILE'},
     'verbose': {
         'default': True,
@@ -45,7 +39,7 @@ SECTIONS['scheduling'] = {
     'credentials': {
         'default': CREDENTIALS_FILE_NAME,
         'type': str,
-        'help': "File name containing the restAPI service credetinals in the format of user|pwd",
+        'help': "File name containing the restAPI service credentials in the format of user|pwd",
         'metavar': 'FILE'},    
     }
 
@@ -66,7 +60,7 @@ SECTIONS['globus'] = {
     'secondary-beamline-contact-badge': {
         'type': int,
         'default': 56788,
-        'help': 'Badge name of primary beamline contact.  Added to all DM experiments'},
+        'help': 'Badge name of secondary beamline contact.  Added to all DM experiments'},
     'secondary-beamline-contact-email': {
         'default': 'akastengren@anl.gov',
         'type': str,
@@ -81,14 +75,14 @@ SECTIONS['globus'] = {
         'default': 0,
         'type': int,
         'help': 'Badge number of the last user manually added to the experiment'},
-    'globus-server-name': {
+    'globus-server-uuid': {
+        'default': '054a0877-97ca-4d80-947f-47ca522b173e',
         'type': str,
-        'default': 'sojourner',
-        'help': "Globus server name. Supported severs are: sojourner or petrel"},
+        'help': 'UUID of the Globus endpoint for the data management server (sojourner)'},
     'globus-server-top-dir': {
         'default': '/gdata/dm/7BM',
         'type': str,
-        'help': 'Path from data storage root to the beamline top directory. Options are /gdata/dm/7BM or /gdata/dm/2BM'},
+        'help': 'Path from data storage root to the beamline top directory'},
     'manual': {
         'default': False,
         'help': 'Create a manual experiment (not from the scheduling system)',
@@ -106,6 +100,7 @@ SECTIONS['globus'] = {
         'default': 'Commissioning',
         'help': 'Title for manual experiment'},
     } 
+
 
 SECTIONS['local'] = {
     'analysis': {
@@ -177,7 +172,6 @@ def parse_known_args(parser, subparser=False):
         subparser_value = [sys.argv[1]] if subparser else []
         config_values = config_to_list(config_name=get_config_name())
         values = subparser_value + config_values + sys.argv[1:]
-        #print(subparser_value, config_values, values)
     else:
         values = ""
 

@@ -21,6 +21,9 @@ def current_run(args):
         Run name 2024-1.
     """
     auth = authorize.basic(args.credentials)
+    if auth is None:
+        log.error('Cannot authenticate to scheduling system')
+        return None
     end_point         = "beamline-scheduling/sched-api/run/getAllRuns"
     api_url = args.url + "/" + end_point 
 
@@ -87,6 +90,9 @@ def list_beamtimes(args):
         Each dict contains: gup_number, pi_last_name, gup_title, year_month, start_time, end_time
     """
     auth = authorize.basic(args.credentials)
+    if auth is None:
+        log.error('Cannot authenticate to scheduling system')
+        return []
     end_point = "beamline-scheduling/sched-api/activity/findByRunNameAndBeamlineId"
     run_name = current_run(args)
     if run_name is None:

@@ -1,12 +1,8 @@
 #!/local/user2bmb/Software/anaconda/bin/python
 # -*- coding: utf-8 -*-
 import os
-import re
 import sys
 import argparse
-import pathlib
-import logging
-import time
 from datetime import datetime, timedelta
 
 from globus import scheduling
@@ -15,9 +11,7 @@ from globus import config
 from globus import dm
 from globus import log
 from globus import pv
-from globus import directories
 from globus import message
-from globus import globus
 
 __author__ = "Francesco De Carlo"
 __copyright__ = "Copyright (c) 2019, UChicago Argonne, LLC."
@@ -35,9 +29,6 @@ def set_config(args):
 def show(args):
     # show args from default (config.py) if not changed
     config.show_config(args)
-    if (args.globus_server_name == 'petrel'):
-        ac, tc = globus.create_clients(args)
-        globus.show_endpoints(args, ac, tc)
 
 def email(args):
 
@@ -48,7 +39,7 @@ def email(args):
     # prepare the message
     args.msg = message.message(args)
     log.info('   Message to users start:')  
-    log.info('   *** %s' % args.msg)  
+    log.info('   *** %s' % args.msg.get_content())
     log.info('   Message to users end')  
     # send the message
     message.send_email(args)
@@ -56,30 +47,27 @@ def email(args):
 def init(args):
     '''Initiate data management
     '''
-    if (args.globus_server_name == 'sojourner'):
-        new_exp = dm.create_experiment(args)
-        if args.manual:
-            # Build user list from --manual-badges
-            user_list = set()
-            # Always add beamline contacts
-            user_list.add('d' + str(args.primary_beamline_contact_badge))
-            user_list.add('d' + str(args.secondary_beamline_contact_badge))
-            # Add manually specified badges
-            if args.manual_badges:
-                for badge in args.manual_badges.split(','):
-                    badge = badge.strip()
-                    if badge:
-                        user_list.add('d' + badge)
-            log.info('Adding manual users to the DM experiment.')
-        else:
-            user_list = dm.make_dm_username_list(args)
-            log.info('Adding users from the current proposal to the DM experiment.')
-        dm.add_users(new_exp, user_list)
-    elif (args.globus_server_name == 'petrel'):
-        globus.refresh_globus_token(args)
-        ac, tc = globus.create_clients(args)
-        log.info('Creating user directory on server %s:%s' % (args.globus_server_uuid, args.globus_server_top_dir))
-        globus.create_globus_dir(args, ac, tc)
+    new_exp = dm.create_experiment(args)
+    if new_exp is None:
+        log.error('Could not create or retrieve DM experiment. Is the DM system accessible?')
+        return
+    if args.manual:
+        # Build user list from --manual-badges
+        user_list = set()
+        # Always add beamline contacts
+        user_list.add('d' + str(args.primary_beamline_contact_badge))
+        user_list.add('d' + str(args.secondary_beamline_contact_badge))
+        # Add manually specified badges
+        if args.manual_badges:
+            for badge in args.manual_badges.split(','):
+                badge = badge.strip()
+                if badge:
+                    user_list.add('d' + badge)
+        log.info('Adding manual users to the DM experiment.')
+    else:
+        user_list = dm.make_dm_username_list(args)
+        log.info('Adding users from the current proposal to the DM experiment.')
+    dm.add_users(new_exp, user_list)
 
 def start_daq(args):
     '''Start a Data Management DAQ on the analysis machine directory.
@@ -124,7 +112,7 @@ def main():
     cmd_parsers = [
         ('config',      set_config,     globus_params,  "Create configuration file"),
         ('show',        show,           globus_params,  "Show status"),
-        ('init',        init,           globus_params,  "Initialize data mamagement"),
+        ('init',        init,           globus_params,  "Initialize data management"),
         ('list_users',  list_users,     globus_params,  "List the users on the current DM experiment"),
         ('add_user',    add_user,       globus_params,  "Add a user to the current DM experiment by badge number"),
         ('remove_user', remove_user,    globus_params,  "Remove a user from the current DM experiment by badge number"),
@@ -157,17 +145,6 @@ def main():
             log.error(str(e))
             sys.exit(1)
         return
-
-    if (args.globus_server_name == 'sojourner'):
-        args.globus_server_uuid = '054a0877-97ca-4d80-947f-47ca522b173e'
-        # args.globus_server_top_dir = '/gdata/dm/7BM'
-    elif (args.globus_server_name == 'petrel'):
-        args.globus_server_uuid = 'e133a81a-6d04-11e5-ba46-22000b92c6ec'
-        args.globus_app_uuid = 'a9badd00-39c3-4473-b180-8bccc113ba1d' # for usr32idc/petrel
-        args.globus_server_top_dir = '/2-BM/'
-    else:
-        log.error("%s is not a supported globus server" % args.globus_server_name)
-        exit()
 
     #Init here, otherwise we don't have parameters to do the following updates
     if args.manual:
