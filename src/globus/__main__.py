@@ -148,7 +148,6 @@ def main():
         parser.print_help()
         sys.exit(0)
    
-  
     #Do config here, because otherwise we won't have PVs to update our info anyway
     if args._func == set_config:
         try:
@@ -171,7 +170,6 @@ def main():
         exit()
 
     #Init here, otherwise we don't have parameters to do the following updates
-
     if args.manual:
         now = datetime.now()
         args.year_month    = now.strftime('%Y-%m')
@@ -182,7 +180,6 @@ def main():
         args.manual_end    = (now + timedelta(days=14)).strftime('%d-%b-%y')
         log.info(f"Manual experiment: {args.year_month}-{args.pi_last_name}, "
                  f"title: {args.gup_title}")
-
     elif args.set != 0:
         # Past experiment: retrieve info from the scheduling system
         beamtimes = scheduling.list_beamtimes(args)
@@ -209,7 +206,6 @@ def main():
                 except (ValueError, EOFError):
                     print("Invalid input. Please enter a number.")
 
-
         args.year_month   = bt['year_month']
         args.pi_last_name = bt['pi_last_name']
         args.gup_number   = bt['gup_number']
@@ -219,11 +215,6 @@ def main():
     else:
         # Current experiment: read from EPICS PVs
         args.year_month, args.pi_last_name, args.gup_number, args.gup_title = pv.update_experiment_info(args)
-
-
-
-
-
 
     required_args = {
         'year_month': args.year_month,

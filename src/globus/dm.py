@@ -122,6 +122,7 @@ def create_experiment(args):
         log.warning('   Experiment already exists (caught on create). Retrieving: %s' % dir_name)
         return exp_api.getExperimentByName(dir_name)
 
+
 def add_users(exp_obj, username_list):
     '''Add a list of users to a DM experiment
     '''
@@ -135,7 +136,6 @@ def add_users(exp_obj, username_list):
         user_api.addUserExperimentRole(uname, 'User', exp_obj['name'])
         log.info('   Added user {0:s} to the DM experiment'.format(
                     make_pretty_user_name(user_obj)))
-
 
 def start_daq(args):
     '''Starts the data managememnt (DM) data acquisition (DAQ) system. 
@@ -224,6 +224,7 @@ def remove_user(args):
     except:
         log.error('   Problem removing the user.  Check the badge number')
 
+
 def list_users(args):
     '''Lists the users on the current experiment in a nice format.
     First tries the DM experiment. If not found, lists users from the
@@ -264,9 +265,6 @@ def list_users(args):
         log.info('   User {0:s}, {1:s}, badge {2:s}, {3:s}{4:s}'.format(
                     u['lastName'], u['firstName'], u['badge'],
                     u.get('email', 'no email'), pi_flag))
-
-
-
 
 
 def list_users_this_dm_exp(args):
