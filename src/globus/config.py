@@ -107,6 +107,33 @@ SECTIONS['globus'] = {
         'help': 'Title for manual experiment'},
     } 
 
+SECTIONS['local'] = {
+    'analysis': {
+        'type': str,
+        'default': 'mach',
+        'help': "Computer running the data analysis"},
+    'analysis-user-name': {
+        'type': str,
+        'default': '7bmb',
+        'help': "User name to access the data analysis computer"},
+    'analysis-top-dir': {
+        'type': str,
+        'default': '/local/data/',
+        'help': "raw data top directory"},
+    'detector': {
+        'type': str,
+        'default': 'prandtl',
+        'help': "Computer controlling the detector where the raw data are stored"},
+    'detector-user-name': {
+        'type': str,
+        'default': '7bmb',
+        'help': "User name to access the computer controlling the detector"},
+    'detector-top-dir': {
+        'type': str,
+        'default': '/local/data/',
+        'help': "raw data top directory"},
+    }
+
 SECTIONS['epics'] = {
     'tomoscan-prefix' : {
         'default' : '7bmb1:TomoScan:',
@@ -120,9 +147,9 @@ SECTIONS['email'] = {
         'help': 'Set to True to send and email to all users listed in the current proposal',
         'action': 'store_true'}}
 
-GLOBUS_PARAMS = ('globus', 'scheduling', 'epics')
+GLOBUS_PARAMS = ('globus', 'scheduling', 'local', 'epics')
 
-NICE_NAMES = ('General', 'Scheduling', 'Globus', 'Epics', 'e-mail')
+NICE_NAMES = ('General', 'Scheduling', 'Globus', 'Local', 'Epics', 'e-mail')
 
 def get_config_name():
     """Get the command line --config option."""
