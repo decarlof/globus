@@ -23,6 +23,8 @@ def make_dm_username_list(args):
     '''
     log.info('Making a list of DM system usernames from target proposal')
     target_prop = scheduling.get_beamtime(str(args.gup_number), args)
+    if target_prop is None:
+        return None
     users = target_prop['beamtime']['proposal']['experimenters']
     log.info('   Adding the primary beamline contact')
     user_ids = {'d' + str(args.primary_beamline_contact_badge)}
@@ -33,6 +35,25 @@ def make_dm_username_list(args):
                     u['lastName'], u['firstName'], u['badge']))
         user_ids.add('d' + str(u['badge']))
     return user_ids
+
+
+def log_exp_users(exp_name):
+    '''Log the full name and badge of each user currently on a DM experiment.'''
+    try:
+        exp_obj = exp_api.getExperimentByName(exp_name)
+        username_list = exp_obj.get('experimentUsernameList', [])
+        if not username_list:
+            log.info('   No users currently on this experiment')
+            return
+        for uname in username_list:
+            try:
+                user_obj = user_api.getUserByUsername(uname)
+                log.info('   {:s}, badge {:s}'.format(
+                    make_pretty_user_name(user_obj), user_obj['badge']))
+            except Exception:
+                log.info('   {:s} (could not retrieve details)'.format(uname))
+    except Exception as e:
+        log.warning('   Could not query DM experiment: %s' % str(e))
 
 
 def make_username_list(args):
@@ -90,11 +111,13 @@ def create_experiment(args):
         old_exp = exp_api.getExperimentByName(dir_name)
         log.warning('   Experiment already exists: %s' % old_exp['name'])
         return old_exp
-    except oee:
-        pass  # Experiment doesn't exist, continue to create it
     except Exception as e:
-        log.error('   Could not query DM system: %s' % str(e))
-        return None
+        error_msg = str(e)
+        if 'does not exist' in error_msg:
+            log.info('   Experiment does not exist yet, will create it')
+        else:
+            log.error('   Could not query DM system: %s' % error_msg)
+            return None
 
     log.info('Creating new DM experiment: {0:s}/{1:s}'.format(args.year_month, dir_name))
 
@@ -106,7 +129,11 @@ def create_experiment(args):
         # Scheduled experiment: get dates from scheduling system
         target_beamtime = scheduling.get_beamtime(args.gup_number, args)
         if target_beamtime is None:
-            log.error('   Could not find beamtime for GUP %s' % args.gup_number)
+            log.error('  Could not find beamtime for GUP %s. '
+                      'If this is a commissioning run with no proposal, use '
+                      '"globus init --manual --manual-name <LastName> '
+                      '--manual-title <Title> --manual-badges <badge1,badge2,...>"'
+                      % args.gup_number)
             return None
         start_datetime = datetime.datetime.strptime(
                             target_beamtime['startTime'],
@@ -130,6 +157,7 @@ def create_experiment(args):
     except Exception as e:
         log.error('   Could not create DM experiment: %s' % str(e))
         return None
+
 
 
 def add_users(exp_obj, username_list):
@@ -217,8 +245,17 @@ def stop_daq(args):
         log.info('   No active DAQs for this experiment were found')
 
 
+def get_user_name_by_badge(badge):
+    '''Return the pretty name for a badge number, or None if not found.'''
+    try:
+        user_obj = user_api.getUserByUsername('d{:d}'.format(badge))
+        return make_pretty_user_name(user_obj)
+    except Exception:
+        return None
+
+
 def add_user(args):
-    '''Add a user from the DM experiment.
+    '''Add a user to the DM experiment.
     '''
     exp_name = directories.make_directory_name(args)
     try:
@@ -234,23 +271,58 @@ def add_user(args):
 
 def remove_user(args):
     '''Remove a user from the DM experiment.
+    Shows the current user list and lets the operator select by number.
     '''
     exp_name = directories.make_directory_name(args)
-    dm_username = 'd{:d}'.format(args.badge)
-    try:
-        user_to_remove = user_api.getUserByUsername(dm_username)
-    except Exception as e:
-        log.error('   Problem retrieving user information: %s' % str(e))
-        return
-    log.info('Removing user {0:s} from experiment {1:s}'.format(
-                make_pretty_user_name(user_to_remove), exp_name))
     try:
         exp_obj = exp_api.getExperimentByName(exp_name)
     except Exception as e:
-        log.error('    No appropriate DM experiment found: %s' % str(e))
+        log.error('   No appropriate DM experiment found: %s' % str(e))
         return
+
+    username_list = exp_obj.get('experimentUsernameList', [])
+    if not username_list:
+        log.info('   No users on this experiment')
+        return
+
+    # Resolve full user info for each username
+    users = []
+    for uname in username_list:
+        try:
+            user_obj = user_api.getUserByUsername(uname)
+            users.append((uname, user_obj))
+        except Exception:
+            users.append((uname, None))
+
+    # Display numbered list
+    log.info('Users on experiment %s:' % exp_name)
+    for i, (uname, user_obj) in enumerate(users):
+        if user_obj:
+            print('  [{:d}] {:s}, badge {:s}'.format(
+                i, make_pretty_user_name(user_obj), user_obj['badge']))
+        else:
+            print('  [{:d}] {:s} (could not retrieve details)'.format(i, uname))
+
+    # Prompt for selection
+    while True:
+        try:
+            choice = input(f"\nSelect user to remove [0-{len(users)-1}] or 'q' to quit: ").strip()
+            if choice.lower() == 'q':
+                log.info('   No user removed.')
+                return
+            choice = int(choice)
+            if 0 <= choice < len(users):
+                break
+            print(f"Please enter a number between 0 and {len(users)-1}")
+        except (ValueError, EOFError):
+            print("Invalid input. Please enter a number or 'q' to quit.")
+
+    dm_username, user_obj = users[choice]
+    name = make_pretty_user_name(user_obj) if user_obj else dm_username
+    log.info('Removing user {:s} from experiment {:s}'.format(name, exp_name))
     try:
         user_api.deleteUserExperimentRole(dm_username, 'User', exp_name)
+        log.info('   User {:s} successfully removed'.format(name))
     except Exception as e:
         log.error('   Problem removing the user: %s' % str(e))
 
@@ -345,6 +417,6 @@ def make_data_link(args):
     output_link = 'https://app.globus.org/file-manager?origin_id='
     output_link += args.globus_server_uuid
     output_link += '&origin_path='
-    target_dir = args.globus_server_top_dir + '/' + args.year_month + '/' + exp_name + '/\n'
-    output_link += target_dir.replace('/','%2F') 
+    target_dir = '/' + args.year_month + '/' + exp_name + '/\n'
+    output_link += target_dir.replace('/','%2F')
     return output_link

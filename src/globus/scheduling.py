@@ -65,14 +65,22 @@ def get_beamtime(gup_number, args):
     run_name = current_run(args)
     api_url = (args.url + '/' + end_point + 
                 '/' + run_name + '/' + args.beamline)
+    if not str(gup_number).strip():
+        log.error("GUP number is empty — the EPICS PVs are not set for a scheduled experiment.")
+        log.error("To create a manual experiment (e.g. for commissioning) run:")
+        log.error("  globus init --manual --manual-name <LastName> --manual-title <Title> --manual-badges <badge1,badge2,...>")
+        return None
     reply = requests.get(api_url, auth=auth)
     if reply.status_code == 404:
-        log.error("No response from the restAPI. Error: %s" % reply.status_code)    
+        log.error("No response from the restAPI. Error: %s" % reply.status_code)
         return None
     for item in reply.json():
         # log.info(item['beamtime']['proposal'])
         # log.info(item['beamtime']['proposal']['gupId'])
-        if int(item['beamtime']['proposal']['gupId']) == int(gup_number):
+        gup_id = item['beamtime']['proposal'].get('gupId', '')
+        if not gup_id:
+            continue
+        if int(gup_id) == int(gup_number):
             log.info("Beamtime for GUP {0} found in run {1}".format(gup_number, run_name))
             return item
     log.error(f"No beamtime from proposal {gup_number} found in run {run_name}")

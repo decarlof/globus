@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from globus import scheduling
 
 from globus import config
+from globus import directories
 from globus import dm
 from globus import log
 from globus import pv
@@ -49,7 +50,6 @@ def init(args):
     '''
     new_exp = dm.create_experiment(args)
     if new_exp is None:
-        log.error('Could not create or retrieve DM experiment. Is the DM system accessible?')
         return
     if args.manual:
         # Build user list from --manual-badges
@@ -66,6 +66,17 @@ def init(args):
         log.info('Adding manual users to the DM experiment.')
     else:
         user_list = dm.make_dm_username_list(args)
+        if user_list is None:
+            exp_name = directories.make_directory_name(args)
+            log.warning(f"   GUP {args.gup_number} not found in the scheduling system.")
+            log.warning(f"   However, DM experiment '{exp_name}' already exists with these users:")
+            dm.log_exp_users(exp_name)
+            log.warning(f"   Do you want to use its existing users?")
+            if message.yes_or_no('   *** Yes or No'):
+                user_list = dm.make_username_list(args)
+            else:
+                log.info("   To add a user run: globus add_user --badge <badge#>")
+                return
         log.info('Adding users from the current proposal to the DM experiment.')
     dm.add_users(new_exp, user_list)
 
@@ -82,6 +93,24 @@ def stop_daq(args):
 
 
 def add_user(args):
+    if '--badge' not in sys.argv:
+        # No badge given on the command line — use the last stored badge from config
+        if not args.badge:
+            log.info("No --badge entered and no badge stored in config.")
+            log.info("   To add a user run: globus add_user --badge <badge#>")
+            return
+        name = dm.get_user_name_by_badge(args.badge)
+        display = f"{name}, badge {args.badge}" if name else f"badge {args.badge}"
+        log.info(f"   No --badge entered, using last stored badge: {display}")
+        # Check if already on the experiment before prompting
+        current_users = dm.make_username_list(args)
+        if 'd{:d}'.format(args.badge) in current_users:
+            log.info(f"   {display} is already on the experiment.")
+            log.info("   To add a different user run: globus add_user --badge <badge#>")
+            return
+        if not message.yes_or_no('   *** Confirm? Yes or No'):
+            log.info("   To add a different user run: globus add_user --badge <badge#>")
+            return
     dm.add_user(args)
 
 
@@ -146,6 +175,11 @@ def main():
             sys.exit(1)
         return
 
+    # show only displays config values — no PVs or scheduling needed
+    if args._func == show:
+        args._func(args)
+        return
+
     #Init here, otherwise we don't have parameters to do the following updates
     if args.manual:
         now = datetime.now()
@@ -175,13 +209,17 @@ def main():
                 print(f"       {bt['start_time']} to {bt['end_time']}")
             while True:
                 try:
-                    choice = int(input(f"\nSelect beamtime [0-{len(beamtimes)-1}]: "))
+                    choice = input(f"\nSelect beamtime [0-{len(beamtimes)-1}] or 'q' to quit: ").strip()
+                    if choice.lower() == 'q':
+                        log.info("No beamtime selected. Exiting.")
+                        return
+                    choice = int(choice)
                     if 0 <= choice < len(beamtimes):
                         bt = beamtimes[choice]
                         break
                     print(f"Please enter a number between 0 and {len(beamtimes)-1}")
                 except (ValueError, EOFError):
-                    print("Invalid input. Please enter a number.")
+                    print("Invalid input. Please enter a number or 'q' to quit.")
 
         args.year_month   = bt['year_month']
         args.pi_last_name = bt['pi_last_name']
@@ -201,16 +239,25 @@ def main():
     }
 
     for name, value in required_args.items():
-        if value is None:
-            log.error(f"Error: Required argument '{name}' is missing. "
+        if not value:
+            log.error(f"Error: Required argument '{name}' is missing or empty. "
                       f"Check that tomoscan with prefix {args.tomoscan_prefix} is up and running")
             sys.exit(1)
 
     # Save CLI parameters to config file so they become the new defaults
-    # Reset 'set' to 0 — it's a one-time offset, not a persistent setting
+    # Reset one-time flags so they don't persist into the next invocation.
+    # Save and restore the values that the function still needs after the write.
+    manual_for_run        = args.manual
+    manual_badges_for_run = args.manual_badges
     args.set = 0
+    args.manual        = False
+    args.manual_name   = config.SECTIONS['globus']['manual-name']['default']
+    args.manual_title  = config.SECTIONS['globus']['manual-title']['default']
+    args.manual_badges = config.SECTIONS['globus']['manual-badges']['default']
     sections = config.GLOBUS_PARAMS
     config.write(args.config, args=args, sections=sections)
+    args.manual        = manual_for_run
+    args.manual_badges = manual_badges_for_run
 
     if args._func == init:
         try:
