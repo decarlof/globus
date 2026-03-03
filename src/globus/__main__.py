@@ -269,6 +269,16 @@ def main():
     args.manual_badges = manual_badges_for_run
 
     if args._func == init:
+        exp_name = directories.make_directory_name(args)
+        log.info('Init summary:')
+        log.info('   Experiment : %s/%s' % (args.year_month, exp_name))
+        log.info('   Title      : %s' % args.gup_title)
+        if manual_for_run:
+            log.info('   Start      : %s' % args.manual_start)
+            log.info('   End        : %s' % args.manual_end)
+        if not message.yes_or_no('   *** Confirm? Yes or No'):
+            log.info('   Aborted.')
+            return
         try:
             args._func(args)
             return
