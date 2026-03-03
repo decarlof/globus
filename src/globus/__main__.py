@@ -183,12 +183,20 @@ def main():
     #Init here, otherwise we don't have parameters to do the following updates
     if args.manual:
         now = datetime.now()
-        args.year_month    = now.strftime('%Y-%m')
+        if args.manual_date:
+            try:
+                ref_date = datetime.strptime(args.manual_date, '%Y-%m')
+            except ValueError:
+                log.error(f"Invalid --manual-date '{args.manual_date}': expected format is yyyy-mm (e.g. 2025-12)")
+                sys.exit(1)
+        else:
+            ref_date = now
+        args.year_month    = ref_date.strftime('%Y-%m')
         args.pi_last_name  = args.manual_name
         args.gup_number    = '0'
         args.gup_title     = args.manual_title
-        args.manual_start  = now.strftime('%d-%b-%y')
-        args.manual_end    = (now + timedelta(days=14)).strftime('%d-%b-%y')
+        args.manual_start  = ref_date.strftime('%d-%b-%y')
+        args.manual_end    = (ref_date + timedelta(days=14)).strftime('%d-%b-%y')
         log.info(f"Manual experiment: {args.year_month}-{args.pi_last_name}, "
                  f"title: {args.gup_title}")
     elif args.set != 0:
@@ -251,6 +259,7 @@ def main():
     manual_badges_for_run = args.manual_badges
     args.set = 0
     args.manual        = False
+    args.manual_date   = config.SECTIONS['globus']['manual-date']['default']
     args.manual_name   = config.SECTIONS['globus']['manual-name']['default']
     args.manual_title  = config.SECTIONS['globus']['manual-title']['default']
     args.manual_badges = config.SECTIONS['globus']['manual-badges']['default']

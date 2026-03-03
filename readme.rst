@@ -90,6 +90,8 @@ Initialize data management: create a DM experiment on Sojourner and add users to
 +---------------------------+------------------------------------------+-------------------------------------------+
 | Manual (no proposal)      | ``globus init --manual``                 | Command-line arguments                    |
 +---------------------------+------------------------------------------+-------------------------------------------+
+| Manual with past date     | ``globus init --manual --manual-date``   | Command-line arguments                    |
++---------------------------+------------------------------------------+-------------------------------------------+
 
 **How the user list is built**
 
@@ -176,11 +178,20 @@ Example::
                   --manual-badges 49734,324083,293228,329663
 
 - Experiment name: ``YYYY-MM-<manual-name>-0`` (e.g. ``2026-02-BrainNoemi-0``)
-- Start date: today; end date: 14 days from today
+- Start date: today (or ``--manual-date`` if provided); end date: 14 days later
 - Users: beamline contacts (always added) + ``--manual-badges`` list
 - If the experiment already exists, users are re-confirmed and any new ones added
 
-Note: ``--manual``, ``--manual-name``, ``--manual-title``, ``--manual-badges`` are one-time flags and are not saved to ``globus.conf``.
+To backdate a manual experiment to a specific month, use ``--manual-date`` in ``yyyy-mm`` format::
+
+    $ globus init --manual --manual-date 2025-12 --manual-name BrainNoemi \
+                  --manual-title "Commissioning: Brain samples for Noemi" \
+                  --manual-badges 49734,324083,293228,329663
+
+This creates experiment ``2025-12-BrainNoemi-0`` with start date ``01-Dec-25``.
+If ``--manual-date`` is omitted, the current month is used. An invalid format (e.g. ``12/2025``) produces an error and exits.
+
+Note: ``--manual``, ``--manual-date``, ``--manual-name``, ``--manual-title``, ``--manual-badges`` are one-time flags and are not saved to ``globus.conf``.
 
 
 list_users
@@ -340,6 +351,13 @@ Typical Workflows
                   --manual-badges 49734,218262,293228,324083,329663
     $ globus list_users
     $ globus add_user --badge 51803     # add a user after the fact
+    $ globus email
+
+**Backdated manual experiment (e.g. forgot to run init in December)**::
+
+    $ globus init --manual --manual-date 2025-12 --manual-name BrainNoemi \
+                  --manual-title "Commissioning: Brain samples for Noemi" \
+                  --manual-badges 49734,218262,293228,324083,329663
     $ globus email
 
 **Commissioning / no proposal (experiment already exists, adding a user)**::

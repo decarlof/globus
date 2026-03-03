@@ -91,6 +91,10 @@ SECTIONS['globus'] = {
         'type': str,
         'default': '',
         'help': 'Comma-separated list of badge numbers for manual experiment'},
+    'manual-date': {
+        'type': str,
+        'default': '',
+        'help': 'Year-month for manual experiment in yyyy-mm format (default: current month)'},
     'manual-name': {
         'type': str,
         'default': 'Staff',
