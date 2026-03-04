@@ -65,6 +65,9 @@ Commands at a Glance
      - Select an experiment → interactively remove a user from its Sojourner DM experiment
    * - ``globus email``
      - Select an experiment → send a data-access email with Globus link to all users
+   * - ``globus dirs``
+     - Select an experiment → create data folders on the detector and analysis computers
+       (also creates a ``_rec`` reconstruction folder on the analysis machine)
    * - ``globus daq start``
      - Select an experiment → start automated real-time file transfer to Sojourner
    * - ``globus daq stop``
@@ -369,6 +372,31 @@ Select an experiment, then stop all running automated file transfers for it::
 
 Queries the DM system, finds all DAQs matching the current experiment in ``running`` state, stops
 each one, and reports how many were stopped. Logs a warning if no active DAQs are found.
+
+
+dirs
+~~~~
+
+Select an experiment, then create the experiment data folders on both the detector and
+analysis computers::
+
+    $ globus dirs
+
+What it does:
+
+1. SSHes into the detector computer and creates ``{detector_top_dir}/{exp_name}``
+2. SSHes into the analysis computer and creates ``{analysis_top_dir}/{exp_name}``
+3. Also creates ``{analysis_top_dir}/{exp_name}_rec`` for reconstructions
+
+Prerequisites:
+
+- SSH access to both machines must be configured (key-based, no password prompt)
+- ``detector``, ``detector_user_name``, ``detector_top_dir``, ``analysis``,
+  ``analysis_user_name``, and ``analysis_top_dir`` must be set in ``~/globus.conf``
+
+Run ``globus dirs`` before starting data collection to ensure the directories exist.
+``globus daq start`` will also create the analysis directory automatically if missing,
+but ``globus dirs`` handles both machines and the reconstruction folder in one step.
 
 
 Troubleshooting
