@@ -22,22 +22,6 @@ def init_general_PVs(args):
     return global_PVs
 
 
-def update_experiment_info(args):
-    '''Retrieve the information for the current experiment from the beamline PVs.
-    Returns:
-    Year and month of the current experiment as a string in the format %Y-%m
-    Last name of the PI as a string
-    Proposal number as a string
-    '''
-    global_PVs = init_general_PVs(args)
-
-    year_month   = global_PVs['ExperimentYearMonth'].get(as_string=True)
-    pi_last_name = global_PVs['UserLastName'].get(as_string=True)
-    pi_email     = global_PVs['UserEmail'].get(as_string=True)
-    gup_number   = global_PVs['ProposalNumber'].get(as_string=True)
-    gup_title    = global_PVs['ProposalTitle'].get(as_string=True)
-    return year_month, pi_last_name, gup_number, gup_title
-
 
 def write_experiment_info(args):
     '''Write experiment metadata retrieved from the scheduling system to the tomoScan EPICS PVs.
