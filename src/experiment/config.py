@@ -99,11 +99,23 @@ SECTIONS['globus'] = {
         'type': str,
         'default': 'Staff',
         'help': 'PI last name for manual experiment'},
+    'first-name': {
+        'type': str,
+        'default': '',
+        'help': 'PI first name for manual experiment (used when writing tomoScan PVs)'},
+    'institution': {
+        'type': str,
+        'default': '',
+        'help': 'PI institution for manual experiment (used when writing tomoScan PVs)'},
+    'email': {
+        'type': str,
+        'default': '',
+        'help': 'PI email for manual experiment (used when writing tomoScan PVs)'},
     'title': {
         'type': str,
         'default': 'Commissioning',
         'help': 'Title for manual experiment'},
-    } 
+    }
 
 
 SECTIONS['local'] = {

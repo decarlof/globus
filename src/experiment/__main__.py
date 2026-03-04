@@ -204,14 +204,27 @@ def main():
                 sys.exit(1)
         else:
             ref_date = now
-        args.year_month    = ref_date.strftime('%Y-%m')
-        args.pi_last_name  = args.name
-        args.gup_number    = '0'
-        args.gup_title     = args.title
-        args.manual_start  = ref_date.strftime('%d-%b-%y')
-        args.manual_end    = (ref_date + timedelta(days=14)).strftime('%d-%b-%y')
+        args.year_month     = ref_date.strftime('%Y-%m')
+        args.pi_last_name   = args.name
+        args.pi_first_name  = args.first_name
+        args.pi_institution = args.institution
+        args.pi_email       = args.email
+        args.pi_badge       = ''
+        args.gup_number     = '0'
+        args.gup_title      = args.title
+        args.manual_start   = ref_date.strftime('%d-%b-%y')
+        args.manual_end     = (ref_date + timedelta(days=14)).strftime('%d-%b-%y')
         log.info(f"Manual experiment: {args.year_month}-{args.pi_last_name}, "
                  f"title: {args.gup_title}")
+
+        log.info("Write experiment metadata to tomoScan PVs?")
+        if message.yes_or_no('   *** Yes or No'):
+            try:
+                from experiment import pv
+                pv.write_experiment_info(args)
+                log.info("   Metadata written to tomoScan PVs")
+            except Exception as e:
+                log.warning("   Could not write to tomoScan PVs: %s" % str(e))
     else:
         # Query the scheduling system for the run containing today+set days
         beamtimes = scheduling.list_beamtimes(args)
@@ -280,12 +293,15 @@ def main():
     # Save and restore the values that the function still needs after the write.
     manual_for_run        = args.manual
     manual_badges_for_run = args.badges
-    args.set    = 0
-    args.manual = False
-    args.date   = config.SECTIONS['globus']['date']['default']
-    args.name   = config.SECTIONS['globus']['name']['default']
-    args.title  = config.SECTIONS['globus']['title']['default']
-    args.badges = config.SECTIONS['globus']['badges']['default']
+    args.set         = 0
+    args.manual      = False
+    args.date        = config.SECTIONS['globus']['date']['default']
+    args.name        = config.SECTIONS['globus']['name']['default']
+    args.first_name  = config.SECTIONS['globus']['first-name']['default']
+    args.institution = config.SECTIONS['globus']['institution']['default']
+    args.email       = config.SECTIONS['globus']['email']['default']
+    args.title       = config.SECTIONS['globus']['title']['default']
+    args.badges      = config.SECTIONS['globus']['badges']['default']
     sections = config.GLOBUS_PARAMS
     config.write(args.config, args=args, sections=sections)
     args.manual  = manual_for_run
