@@ -41,7 +41,7 @@ def send_email(args):
 
     users = dm.list_users_this_dm_exp(args)
     if users is None:
-        log.error('   Cannot send email: no DM experiment found. Have you run "globus init" yet?')
+        log.error('   Cannot send email: no DM experiment found. Have you run "experiment create" yet?')
         return False
 
     emails = dm.make_user_email_list(users)

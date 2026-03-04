@@ -68,7 +68,7 @@ def get_beamtime(gup_number, args):
     if not str(gup_number).strip():
         log.error("GUP number is empty — the EPICS PVs are not set for a scheduled experiment.")
         log.error("To create a manual experiment (e.g. for commissioning) run:")
-        log.error("  globus init --manual --manual-name <LastName> --manual-title <Title> --manual-badges <badge1,badge2,...>")
+        log.error("  experiment create --manual --name <LastName> --title <Title> --badges <badge1,badge2,...>")
         return None
     reply = requests.get(api_url, auth=auth)
     if reply.status_code == 404:

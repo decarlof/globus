@@ -7,7 +7,7 @@ import numpy as np
 from collections import OrderedDict
 from globus import log
 
-CONFIG_FILE_NAME = os.path.join(str(pathlib.Path.home()), 'globus.conf')
+CONFIG_FILE_NAME = os.path.join(str(pathlib.Path.home()), 'experiment.conf')
 CREDENTIALS_FILE_NAME = os.path.join(str(pathlib.Path.home()), '.scheduling_credentials')
 
 SECTIONS = OrderedDict()
@@ -87,19 +87,19 @@ SECTIONS['globus'] = {
         'default': False,
         'help': 'Create a manual experiment (not from the scheduling system)',
         'action': 'store_true'},
-    'manual-badges': {
+    'badges': {
         'type': str,
         'default': '',
         'help': 'Comma-separated list of badge numbers for manual experiment'},
-    'manual-date': {
+    'date': {
         'type': str,
         'default': '',
         'help': 'Year-month for manual experiment in yyyy-mm format (default: current month)'},
-    'manual-name': {
+    'name': {
         'type': str,
         'default': 'Staff',
         'help': 'PI last name for manual experiment'},
-    'manual-title': {
+    'title': {
         'type': str,
         'default': 'Commissioning',
         'help': 'Title for manual experiment'},
@@ -173,7 +173,16 @@ def parse_known_args(parser, subparser=False):
     account that there is a value on the command line specifying the subparser.
     """
     if len(sys.argv) > 1:
-        subparser_value = [sys.argv[1]] if subparser else []
+        if subparser:
+            # Include both top-level and (if present) nested sub-subcommand so
+            # argparse knows which subparser chain to activate before applying
+            # config-file defaults.
+            if sys.argv[1] == 'daq' and len(sys.argv) > 2:
+                subparser_value = [sys.argv[1], sys.argv[2]]
+            else:
+                subparser_value = [sys.argv[1]]
+        else:
+            subparser_value = []
         config_values = config_to_list(config_name=get_config_name())
         values = subparser_value + config_values + sys.argv[1:]
     else:
@@ -273,7 +282,7 @@ def show_config(args):
     """
     args = args.__dict__
 
-    log.warning('Globus status start')
+    log.warning('Experiment status start')
     for section, name in zip(SECTIONS, NICE_NAMES):
         entries = sorted((k for k in args.keys() if k.replace('_', '-') in SECTIONS[section]))
         if entries:
@@ -281,4 +290,4 @@ def show_config(args):
                 value = args[entry] if args[entry] != None else "-"
                 log.info("  {:<16} {}".format(entry, value))
 
-    log.warning('Globus status end')
+    log.warning('Experiment status end')

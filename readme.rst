@@ -1,39 +1,39 @@
-======
-GLOBUS
-======
+==========
+EXPERIMENT
+==========
 
-`globus <https://github.com/xray-imaging/globus>`_ is a CLI tool for managing beamline experiments at the
+`experiment <https://github.com/xray-imaging/globus>`_ is a CLI tool for managing beamline experiments at the
 `Advanced Photon Source (APS) <https://www.aps.anl.gov/>`_. It bridges three systems:
 
 - **EPICS** — reads experiment metadata from beamline `TomoScan <https://tomoscan.readthedocs.io/en/latest/tomoScanApp.html#user-information>`_ process variables
 - **APS scheduling system** — looks up proposals, PI names, GUP numbers, and experimenter lists
 - **APS Data Management (Sojourner) + Globus** — creates DM experiments, manages users, starts automated file transfers, and sends data-access emails
 
-CLI parameters are saved to ``~/globus.conf`` after each run and reused as defaults, so they only need to be specified once.
+CLI parameters are saved to ``~/experiment.conf`` after each run and reused as defaults, so they only need to be specified once.
 
 
 Commands at a Glance
 --------------------
 
-+------------------+-------------------------------------------------------------+
-| Command          | Purpose                                                     |
-+==================+=============================================================+
-| ``show``         | Display current configuration                               |
-+------------------+-------------------------------------------------------------+
-| ``init``         | Create a DM experiment on Sojourner and add users           |
-+------------------+-------------------------------------------------------------+
-| ``list_users``   | List users on the current DM experiment                     |
-+------------------+-------------------------------------------------------------+
-| ``add_user``     | Add a user to the DM experiment by badge number             |
-+------------------+-------------------------------------------------------------+
-| ``remove_user``  | Remove a user from the DM experiment                        |
-+------------------+-------------------------------------------------------------+
-| ``email``        | Send data-access email with Globus link to all users        |
-+------------------+-------------------------------------------------------------+
-| ``start_daq``    | Start automated real-time file transfer to Sojourner        |
-+------------------+-------------------------------------------------------------+
-| ``stop_daq``     | Stop all running file transfers for the current experiment  |
-+------------------+-------------------------------------------------------------+
++----------------------+-------------------------------------------------------------+
+| Command              | Purpose                                                     |
++======================+=============================================================+
+| ``show``             | Display current configuration                               |
++----------------------+-------------------------------------------------------------+
+| ``create``           | Create a DM experiment on Sojourner and add users           |
++----------------------+-------------------------------------------------------------+
+| ``list-users``       | List users on the current DM experiment                     |
++----------------------+-------------------------------------------------------------+
+| ``add-user``         | Add a user to the DM experiment by badge number             |
++----------------------+-------------------------------------------------------------+
+| ``remove-user``      | Remove a user from the DM experiment                        |
++----------------------+-------------------------------------------------------------+
+| ``email``            | Send data-access email with Globus link to all users        |
++----------------------+-------------------------------------------------------------+
+| ``daq start``        | Start automated real-time file transfer to Sojourner        |
++----------------------+-------------------------------------------------------------+
+| ``daq stop``         | Stop all running file transfers for the current experiment  |
++----------------------+-------------------------------------------------------------+
 
 
 Dependencies
@@ -64,19 +64,19 @@ Configuration
 
 Create a default configuration file::
 
-    $ globus config
+    $ experiment config
 
-On first use, pass beamline-specific parameters. These are saved to ``~/globus.conf`` and used as
+On first use, pass beamline-specific parameters. These are saved to ``~/experiment.conf`` and used as
 defaults for all subsequent commands::
 
-    $ globus show --tomoscan-prefix 2bmb:TomoScan: --beamline 2-BM-A,B --experiment-type 2BM \
-                  --globus-server-uuid 054a0877-97ca-4d80-947f-47ca522b173e \
-                  --globus-server-top-dir /gdata/dm/2BM \
-                  --primary-beamline-contact-badge 218262 \
-                  --primary-beamline-contact-email pshevchenko@anl.gov \
-                  --secondary-beamline-contact-badge 49734 \
-                  --secondary-beamline-contact-email decarlo@anl.gov \
-                  --globus-message-file message-2bm.txt
+    $ experiment show --tomoscan-prefix 2bmb:TomoScan: --beamline 2-BM-A,B --experiment-type 2BM \
+                      --globus-server-uuid 054a0877-97ca-4d80-947f-47ca522b173e \
+                      --globus-server-top-dir /gdata/dm/2BM \
+                      --primary-beamline-contact-badge 218262 \
+                      --primary-beamline-contact-email pshevchenko@anl.gov \
+                      --secondary-beamline-contact-badge 49734 \
+                      --secondary-beamline-contact-email decarlo@anl.gov \
+                      --globus-message-file message-2bm.txt
 
 
 Typical Workflows
@@ -84,41 +84,41 @@ Typical Workflows
 
 **Scheduled experiment (EPICS PVs loaded by the control system)**::
 
-    $ globus init           # create DM experiment, add users from scheduling system
-    $ globus list_users     # verify user list
-    $ globus add_user --badge 123456    # add a user not on the proposal
-    $ globus remove_user
-    $ globus start_daq      # begin automated data transfer
-    $ globus email          # send data-access email with Globus link
-    $ globus stop_daq       # end of experiment
+    $ experiment create           # create DM experiment, add users from scheduling system
+    $ experiment list-users       # verify user list
+    $ experiment add-user --badge 123456    # add a user not on the proposal
+    $ experiment remove-user
+    $ experiment daq start        # begin automated data transfer
+    $ experiment email            # send data-access email with Globus link
+    $ experiment daq stop         # end of experiment
 
 **Past or future experiment**::
 
-    $ globus init --set -1  # select from list of beamtimes in previous run
-    $ globus email
+    $ experiment create --set -1  # select from list of beamtimes in previous run
+    $ experiment email
 
 **Commissioning / no proposal (first time)**::
 
-    $ globus init --manual --manual-name BrainNoemi \
-                  --manual-title "Commissioning: Brain samples for Noemi" \
-                  --manual-badges 49734,218262,293228,324083,329663
-    $ globus list_users
-    $ globus add_user --badge 51803     # add a user after the fact
-    $ globus email
+    $ experiment create --manual --name BrainNoemi \
+                        --title "Commissioning: Brain samples for Noemi" \
+                        --badges 49734,218262,293228,324083,329663
+    $ experiment list-users
+    $ experiment add-user --badge 51803     # add a user after the fact
+    $ experiment email
 
-**Backdated manual experiment (e.g. forgot to run init in December)**::
+**Backdated manual experiment (e.g. forgot to run create in December)**::
 
-    $ globus init --manual --manual-date 2025-12 --manual-name BrainNoemi \
-                  --manual-title "Commissioning: Brain samples for Noemi" \
-                  --manual-badges 49734,218262,293228,324083,329663
-    $ globus email
+    $ experiment create --manual --date 2025-12 --name BrainNoemi \
+                        --title "Commissioning: Brain samples for Noemi" \
+                        --badges 49734,218262,293228,324083,329663
+    $ experiment email
 
 **Commissioning / no proposal (experiment already exists, adding a user)**::
 
-    $ globus add_user --badge 51803
-    $ globus init                       # re-run to see updated user list and confirm
+    $ experiment add-user --badge 51803
+    $ experiment create                     # re-run to see updated user list and confirm
        *** Yes or No (Y/N): y
-    $ globus email
+    $ experiment email
 
 
 Command Reference
@@ -126,7 +126,7 @@ Command Reference
 
 For a full list of options::
 
-    $ globus -h
+    $ experiment -h
 
 
 show
@@ -134,43 +134,43 @@ show
 
 Display the current configuration without touching EPICS PVs or the scheduling system::
 
-    $ globus show
+    $ experiment show
 
 Example output::
 
-    2026-02-28 10:00:45,359 - Globus status start
+    2026-02-28 10:00:45,359 - Experiment status start
     2026-02-28 10:00:45,359 -   beamline         2-BM-A,B
     2026-02-28 10:00:45,359 -   globus_server_uuid 054a0877-97ca-4d80-947f-47ca522b173e
     ...
-    2026-02-28 10:00:45,359 - Globus status end
+    2026-02-28 10:00:45,359 - Experiment status end
 
 
-init
-~~~~
+create
+~~~~~~
 
 Create a DM experiment on Sojourner and add users to it. Experiments are named
 ``YYYY-MM-<PIlastname>-<GUP#>`` (e.g. ``2026-02-Li-1018528``).
 
-``globus init`` operates in one of four mutually exclusive modes:
+``experiment create`` operates in one of four mutually exclusive modes:
 
-+---------------------------+------------------------------------------+-------------------------------------------+
-| Mode                      | Command                                  | Source of experiment info                 |
-+===========================+==========================================+===========================================+
-| Current experiment        | ``globus init``                          | EPICS PVs (TomoScan)                      |
-+---------------------------+------------------------------------------+-------------------------------------------+
-| Past/future experiment    | ``globus init --set -1``                 | APS scheduling system (date offset)       |
-+---------------------------+------------------------------------------+-------------------------------------------+
-| Manual (no proposal)      | ``globus init --manual``                 | Command-line arguments                    |
-+---------------------------+------------------------------------------+-------------------------------------------+
-| Manual with past date     | ``globus init --manual --manual-date``   | Command-line arguments                    |
-+---------------------------+------------------------------------------+-------------------------------------------+
++---------------------------+----------------------------------------------+-------------------------------------------+
+| Mode                      | Command                                      | Source of experiment info                 |
++===========================+==============================================+===========================================+
+| Current experiment        | ``experiment create``                        | EPICS PVs (TomoScan)                      |
++---------------------------+----------------------------------------------+-------------------------------------------+
+| Past/future experiment    | ``experiment create --set -1``               | APS scheduling system (date offset)       |
++---------------------------+----------------------------------------------+-------------------------------------------+
+| Manual (no proposal)      | ``experiment create --manual``               | Command-line arguments                    |
++---------------------------+----------------------------------------------+-------------------------------------------+
+| Manual with past date     | ``experiment create --manual --date``        | Command-line arguments                    |
++---------------------------+----------------------------------------------+-------------------------------------------+
 
 The user list is sourced as follows:
 
 +-----------------------+------------------------------------------------------+
 | Mode                  | Source of users                                      |
 +=======================+======================================================+
-| ``--manual``          | Beamline contacts + ``--manual-badges`` list         |
+| ``--manual``          | Beamline contacts + ``--badges`` list                |
 +-----------------------+------------------------------------------------------+
 | All others            | APS scheduling system (experimenter list for GUP)    |
 +-----------------------+------------------------------------------------------+
@@ -180,7 +180,7 @@ The user list is sourced as follows:
 **Current experiment** — reads ``year_month``, ``pi_last_name``, ``gup_number``, and ``gup_title``
 from the EPICS PVs served by TomoScan (prefix configured via ``--tomoscan-prefix``)::
 
-    $ globus init
+    $ experiment create
 
 Requirements:
 
@@ -197,12 +197,12 @@ Requirements:
 
     ERROR - GUP number is empty — the EPICS PVs are not set for a scheduled experiment.
     ERROR - To create a manual experiment (e.g. for commissioning) run:
-    ERROR -   globus init --manual --manual-name <LastName> --manual-title <Title> --manual-badges <badge1,badge2,...>
+    ERROR -   experiment create --manual --name <LastName> --title <Title> --badges <badge1,badge2,...>
 
 **Special case: commissioning experiment already exists in DM**
 
 If a manual experiment was previously created and the EPICS PVs still point to it,
-``globus init`` detects the existing experiment, shows its user list, and prompts::
+``experiment create`` detects the existing experiment, shows its user list, and prompts::
 
     WARNING -    GUP 0 not found in the scheduling system.
     WARNING -    However, DM experiment '2026-02-BrainNoemi-0' already exists with these users:
@@ -216,15 +216,15 @@ Answering ``y`` confirms the existing user list and adds any missing users.
 Answering ``n`` exits and prints the command to add a new user::
 
        *** Yes or No (Y/N): n
-    INFO -    To add a user run: globus add_user --badge <badge#>
+    INFO -    To add a user run: experiment add-user --badge <badge#>
 
 ----
 
 **Past or future experiment** — retrieves experiment info from the APS scheduling system.
 The ``--set`` value shifts the lookup date by that many days from today::
 
-    $ globus init --set -1     # previous run
-    $ globus init --set 30     # run ~30 days from now
+    $ experiment create --set -1     # previous run
+    $ experiment create --set 30     # run ~30 days from now
 
 If multiple beamtimes are found, an interactive menu is shown::
 
@@ -238,44 +238,44 @@ If multiple beamtimes are found, an interactive menu is shown::
 
 Enter ``q`` to exit without creating an experiment.
 
-Note: ``--set`` is a one-time flag and is not saved to ``globus.conf``.
+Note: ``--set`` is a one-time flag and is not saved to ``experiment.conf``.
 
 ----
 
 **Manual experiment** — creates a DM experiment without a scheduling system entry.
 Useful for commissioning, staff tests, or internal work::
 
-    $ globus init --manual --manual-name <LastName> --manual-title "<Title>" --manual-badges <badge1,badge2,...>
+    $ experiment create --manual --name <LastName> --title "<Title>" --badges <badge1,badge2,...>
 
 Example::
 
-    $ globus init --manual --manual-name BrainNoemi --manual-title "Commissioning: Brain samples for Noemi" \
-                  --manual-badges 49734,324083,293228,329663
+    $ experiment create --manual --name BrainNoemi --title "Commissioning: Brain samples for Noemi" \
+                        --badges 49734,324083,293228,329663
 
-- Experiment name: ``YYYY-MM-<manual-name>-0`` (e.g. ``2026-02-BrainNoemi-0``)
-- Start date: today (or ``--manual-date`` if provided); end date: 14 days later
-- Users: beamline contacts (always added) + ``--manual-badges`` list
+- Experiment name: ``YYYY-MM-<name>-0`` (e.g. ``2026-02-BrainNoemi-0``)
+- Start date: today (or ``--date`` if provided); end date: 14 days later
+- Users: beamline contacts (always added) + ``--badges`` list
 - If the experiment already exists, users are re-confirmed and any new ones added
 
-To backdate a manual experiment to a specific month, use ``--manual-date`` in ``yyyy-mm`` format::
+To backdate a manual experiment to a specific month, use ``--date`` in ``yyyy-mm`` format::
 
-    $ globus init --manual --manual-date 2025-12 --manual-name BrainNoemi \
-                  --manual-title "Commissioning: Brain samples for Noemi" \
-                  --manual-badges 49734,324083,293228,329663
+    $ experiment create --manual --date 2025-12 --name BrainNoemi \
+                        --title "Commissioning: Brain samples for Noemi" \
+                        --badges 49734,324083,293228,329663
 
 This creates experiment ``2025-12-BrainNoemi-0`` with start date ``01-Dec-25``.
 An invalid format (e.g. ``12/2025``) produces an error and exits.
 
-Note: ``--manual``, ``--manual-date``, ``--manual-name``, ``--manual-title``, ``--manual-badges``
-are one-time flags and are not saved to ``globus.conf``.
+Note: ``--manual``, ``--date``, ``--name``, ``--title``, ``--badges`` are one-time flags and are
+not saved to ``experiment.conf``.
 
 
-list_users
+list-users
 ~~~~~~~~~~
 
 List the users currently on the DM experiment (name and badge number)::
 
-    $ globus list_users
+    $ experiment list-users
 
 Example output::
 
@@ -286,40 +286,40 @@ Example output::
 If no DM experiment exists, falls back to listing users from the APS scheduling system proposal.
 Supports ``--set`` for past/future experiments::
 
-    $ globus list_users --set -1
+    $ experiment list-users --set -1
 
 
-add_user
+add-user
 ~~~~~~~~
 
 Add a user to the current DM experiment by badge number::
 
-    $ globus add_user --badge 51803
+    $ experiment add-user --badge 51803
 
-Badge numbers can be found from ``globus list_users`` output or the APS people directory.
+Badge numbers can be found from ``experiment list-users`` output or the APS people directory.
 
-Running without ``--badge`` shows the last used badge (stored in ``globus.conf``) and asks for
+Running without ``--badge`` shows the last used badge (stored in ``experiment.conf``) and asks for
 confirmation::
 
-    $ globus add_user
+    $ experiment add-user
        No --badge entered, using last stored badge: Kamel Fezzaa, badge 51803
        *** Confirm? Yes or No (Y/N): y
        Added user Kamel Fezzaa to the DM experiment
 
 If the user is already on the experiment::
 
-    $ globus add_user
+    $ experiment add-user
        Kamel Fezzaa, badge 51803 is already on the experiment.
-       To add a different user run: globus add_user --badge <badge#>
+       To add a different user run: experiment add-user --badge <badge#>
 
 
-remove_user
+remove-user
 ~~~~~~~~~~~
 
 Remove a user from the current DM experiment. Running the command shows a numbered list of current
 users and prompts for a selection::
 
-    $ globus remove_user
+    $ experiment remove-user
 
 Example output::
 
@@ -344,7 +344,7 @@ email
 Send an email to all users on the DM experiment with data access instructions and a direct Globus
 link to their data::
 
-    $ globus email
+    $ experiment email
 
 The email includes:
 
@@ -360,12 +360,12 @@ The ``Data link:`` line in the template is automatically replaced with the corre
 time. A preview of the full email is shown before sending and confirmation is requested.
 
 
-start_daq
+daq start
 ~~~~~~~~~
 
 Start automated real-time file transfer from the analysis computer to Sojourner::
 
-    $ globus start_daq
+    $ experiment daq start
 
 What it does:
 
@@ -380,15 +380,15 @@ If a DAQ for the same experiment and directory is already running, exits without
 Prerequisites:
 
 - SSH access to the analysis machine must be configured (key-based, no password prompt)
-- ``analysis``, ``analysis_top_dir``, and ``analysis_user_name`` must be set in ``~/globus.conf``
+- ``analysis``, ``analysis_top_dir``, and ``analysis_user_name`` must be set in ``~/experiment.conf``
 
 
-stop_daq
+daq stop
 ~~~~~~~~
 
 Stop all running automated file transfers for the current experiment::
 
-    $ globus stop_daq
+    $ experiment daq stop
 
 Queries the DM system, finds all DAQs matching the current experiment in ``running`` state, stops
 each one, and reports how many were stopped. Logs a warning if no active DAQs are found.
@@ -409,7 +409,7 @@ Troubleshooting
 | ``No beamtime from proposal X found``             | GUP is set but not scheduled at this beamline for this run.   |
 |                                                   | Check the GUP or use ``--manual``.                            |
 +---------------------------------------------------+---------------------------------------------------------------+
-| ``globus init --set`` shows stale manual info     | ``--manual`` flag was saved to config. Fixed: one-time flags  |
+| ``experiment create --set`` shows stale info      | ``--manual`` flag was saved to config. Fixed: one-time flags  |
 |                                                   | are now always reset after each run.                          |
 +---------------------------------------------------+---------------------------------------------------------------+
 | Globus link in email points to wrong path         | ``globus_server_top_dir`` should be the filesystem path only; |

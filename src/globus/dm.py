@@ -67,7 +67,7 @@ def make_username_list(args):
     except Exception as e:
         log.error('No such experiment in the DM system: {:s}'.format(exp_name))
         log.error('   Error: %s' % str(e))
-        log.error('   Have you run globus init yet?')
+        log.error('   Have you run experiment create yet?')
         return []
 
 
@@ -131,8 +131,8 @@ def create_experiment(args):
         if target_beamtime is None:
             log.error('  Could not find beamtime for GUP %s. '
                       'If this is a commissioning run with no proposal, use '
-                      '"globus init --manual --manual-name <LastName> '
-                      '--manual-title <Title> --manual-badges <badge1,badge2,...>"'
+                      '"experiment create --manual --name <LastName> '
+                      '--title <Title> --badges <badge1,badge2,...>"'
                       % args.gup_number)
             return None
         start_datetime = datetime.datetime.strptime(

@@ -9,7 +9,7 @@ setup(
     author_email='decarlof@gmail.com',
     url='https://github.com/xray-imaging/globus',
     package_dir={"": "src"},
-    entry_points={'console_scripts':['globus = globus.__main__:main'],},
+    entry_points={'console_scripts':['experiment = globus.__main__:main'],},
     packages=find_packages('src'),
     package_data={'globus': ['*.txt']},
     description='cli to run globus at 2-bm',

@@ -33,33 +33,33 @@ def show(args):
 
 def email(args):
 
-    '''Sends an email to all users on the current experiment 
+    '''Sends an email to all users on the current experiment
     with information on how to get their data from Sojourner.
     '''
     log.info('Sending e-mail to users on the DM experiment')
     # prepare the message
     args.msg = message.message(args)
-    log.info('   Message to users start:')  
+    log.info('   Message to users start:')
     log.info('   *** %s' % args.msg.get_content())
-    log.info('   Message to users end')  
+    log.info('   Message to users end')
     # send the message
     message.send_email(args)
 
-def init(args):
-    '''Initiate data management
+def create(args):
+    '''Create a DM experiment on Sojourner and add users to it.
     '''
     new_exp = dm.create_experiment(args)
     if new_exp is None:
         return
     if args.manual:
-        # Build user list from --manual-badges
+        # Build user list from --badges
         user_list = set()
         # Always add beamline contacts
         user_list.add('d' + str(args.primary_beamline_contact_badge))
         user_list.add('d' + str(args.secondary_beamline_contact_badge))
         # Add manually specified badges
-        if args.manual_badges:
-            for badge in args.manual_badges.split(','):
+        if args.badges:
+            for badge in args.badges.split(','):
                 badge = badge.strip()
                 if badge:
                     user_list.add('d' + badge)
@@ -75,7 +75,7 @@ def init(args):
             if message.yes_or_no('   *** Yes or No'):
                 user_list = dm.make_username_list(args)
             else:
-                log.info("   To add a user run: globus add_user --badge <badge#>")
+                log.info("   To add a user run: experiment add-user --badge <badge#>")
                 return
         log.info('Adding users from the current proposal to the DM experiment.')
     dm.add_users(new_exp, user_list)
@@ -85,7 +85,7 @@ def start_daq(args):
     '''
     dm.start_daq(args)
 
-    
+
 def stop_daq(args):
     '''Stop the Data Management DAQ set up for this experiment.
     '''
@@ -97,7 +97,7 @@ def add_user(args):
         # No badge given on the command line — use the last stored badge from config
         if not args.badge:
             log.info("No --badge entered and no badge stored in config.")
-            log.info("   To add a user run: globus add_user --badge <badge#>")
+            log.info("   To add a user run: experiment add-user --badge <badge#>")
             return
         name = dm.get_user_name_by_badge(args.badge)
         display = f"{name}, badge {args.badge}" if name else f"badge {args.badge}"
@@ -106,10 +106,10 @@ def add_user(args):
         current_users = dm.make_username_list(args)
         if 'd{:d}'.format(args.badge) in current_users:
             log.info(f"   {display} is already on the experiment.")
-            log.info("   To add a different user run: globus add_user --badge <badge#>")
+            log.info("   To add a different user run: experiment add-user --badge <badge#>")
             return
         if not message.yes_or_no('   *** Confirm? Yes or No'):
-            log.info("   To add a different user run: globus add_user --badge <badge#>")
+            log.info("   To add a different user run: experiment add-user --badge <badge#>")
             return
     dm.add_user(args)
 
@@ -130,7 +130,7 @@ def main():
     if not os.path.exists(logs_home):
         os.makedirs(logs_home)
 
-    lfname = logs_home + 'globus_' + datetime.strftime(datetime.now(), "%Y-%m-%d_%H:%M:%S") + '.log'
+    lfname = logs_home + 'experiment_' + datetime.strftime(datetime.now(), "%Y-%m-%d_%H:%M:%S") + '.log'
     log.setup_custom_logger(lfname)
 
 
@@ -139,15 +139,13 @@ def main():
     globus_params = config.GLOBUS_PARAMS
 
     cmd_parsers = [
-        ('config',      set_config,     globus_params,  "Create configuration file"),
-        ('show',        show,           globus_params,  "Show status"),
-        ('init',        init,           globus_params,  "Initialize data management"),
-        ('list_users',  list_users,     globus_params,  "List the users on the current DM experiment"),
-        ('add_user',    add_user,       globus_params,  "Add a user to the current DM experiment by badge number"),
-        ('remove_user', remove_user,    globus_params,  "Remove a user from the current DM experiment by badge number"),
-        ('email',       email,          globus_params,  "Send email with link to all users on the proposal"),
-        ('start_daq',   start_daq,      globus_params,  "Start DM DAQ"),
-        ('stop_daq',    stop_daq,       globus_params,  "Stop DM DAQ"),
+        ('config',       set_config,  globus_params,  "Create configuration file"),
+        ('show',         show,        globus_params,  "Show status"),
+        ('create',       create,      globus_params,  "Create a DM experiment and add users"),
+        ('list-users',   list_users,  globus_params,  "List the users on the current DM experiment"),
+        ('add-user',     add_user,    globus_params,  "Add a user to the current DM experiment by badge number"),
+        ('remove-user',  remove_user, globus_params,  "Remove a user from the current DM experiment"),
+        ('email',        email,       globus_params,  "Send email with link to all users on the proposal"),
     ]
 
     subparsers = parser.add_subparsers(title="Commands", metavar='')
@@ -158,13 +156,29 @@ def main():
         cmd_parser = cmd_params.add_arguments(cmd_parser)
         cmd_parser.set_defaults(_func=func)
 
+    # daq subgroup
+    daq_params = config.Params(sections=globus_params)
+    daq_p = subparsers.add_parser('daq', help='Data acquisition commands')
+    daq_p.set_defaults(_func=lambda args: daq_p.print_help())
+    daq_sub = daq_p.add_subparsers(title='daq commands', metavar='')
+
+    daq_start_p = daq_sub.add_parser('start', help='Start automated real-time file transfer to Sojourner',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    daq_params.add_arguments(daq_start_p)
+    daq_start_p.set_defaults(_func=start_daq)
+
+    daq_stop_p = daq_sub.add_parser('stop', help='Stop all running file transfers for the current experiment',
+                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    daq_params.add_arguments(daq_stop_p)
+    daq_stop_p.set_defaults(_func=stop_daq)
+
     args = config.parse_known_args(parser, subparser=True)
 
     # If no subcommand was provided, print help and exit
     if not hasattr(args, '_func'):
         parser.print_help()
         sys.exit(0)
-   
+
     #Do config here, because otherwise we won't have PVs to update our info anyway
     if args._func == set_config:
         try:
@@ -183,18 +197,18 @@ def main():
     #Init here, otherwise we don't have parameters to do the following updates
     if args.manual:
         now = datetime.now()
-        if args.manual_date:
+        if args.date:
             try:
-                ref_date = datetime.strptime(args.manual_date, '%Y-%m')
+                ref_date = datetime.strptime(args.date, '%Y-%m')
             except ValueError:
-                log.error(f"Invalid --manual-date '{args.manual_date}': expected format is yyyy-mm (e.g. 2025-12)")
+                log.error(f"Invalid --date '{args.date}': expected format is yyyy-mm (e.g. 2025-12)")
                 sys.exit(1)
         else:
             ref_date = now
         args.year_month    = ref_date.strftime('%Y-%m')
-        args.pi_last_name  = args.manual_name
+        args.pi_last_name  = args.name
         args.gup_number    = '0'
-        args.gup_title     = args.manual_title
+        args.gup_title     = args.title
         args.manual_start  = ref_date.strftime('%d-%b-%y')
         args.manual_end    = (ref_date + timedelta(days=14)).strftime('%d-%b-%y')
         log.info(f"Manual experiment: {args.year_month}-{args.pi_last_name}, "
@@ -256,21 +270,21 @@ def main():
     # Reset one-time flags so they don't persist into the next invocation.
     # Save and restore the values that the function still needs after the write.
     manual_for_run        = args.manual
-    manual_badges_for_run = args.manual_badges
-    args.set = 0
-    args.manual        = False
-    args.manual_date   = config.SECTIONS['globus']['manual-date']['default']
-    args.manual_name   = config.SECTIONS['globus']['manual-name']['default']
-    args.manual_title  = config.SECTIONS['globus']['manual-title']['default']
-    args.manual_badges = config.SECTIONS['globus']['manual-badges']['default']
+    manual_badges_for_run = args.badges
+    args.set    = 0
+    args.manual = False
+    args.date   = config.SECTIONS['globus']['date']['default']
+    args.name   = config.SECTIONS['globus']['name']['default']
+    args.title  = config.SECTIONS['globus']['title']['default']
+    args.badges = config.SECTIONS['globus']['badges']['default']
     sections = config.GLOBUS_PARAMS
     config.write(args.config, args=args, sections=sections)
-    args.manual        = manual_for_run
-    args.manual_badges = manual_badges_for_run
+    args.manual  = manual_for_run
+    args.badges  = manual_badges_for_run
 
-    if args._func == init:
+    if args._func == create:
         exp_name = directories.make_directory_name(args)
-        log.info('Init summary:')
+        log.info('Create summary:')
         log.info('   Experiment : %s/%s' % (args.year_month, exp_name))
         log.info('   Title      : %s' % args.gup_title)
         if manual_for_run:
