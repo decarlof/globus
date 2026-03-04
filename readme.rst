@@ -127,6 +127,7 @@ Typical Workflows
 **Scheduled experiment (current run)**::
 
     $ globus create           # pick from today's beamtimes, create DM experiment, add users
+    $ globus dirs             # create data folders on detector and analysis computers
     $ globus list-users       # verify user list
     $ globus add-user --badge 123456    # add a user not on the proposal
     $ globus remove-user      # interactively remove a user
