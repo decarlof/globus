@@ -3,9 +3,9 @@ import datetime
 from dm import ExperimentDsApi, UserDsApi, ExperimentDaqApi
 from dm.common.exceptions.objectAlreadyExists import ObjectAlreadyExists
 
-from experiment import log
-from experiment import directories
-from experiment import scheduling
+from globus import log
+from globus import directories
+from globus import scheduling
 
 exp_api = ExperimentDsApi()
 user_api = UserDsApi()
@@ -67,7 +67,7 @@ def make_username_list(args):
     except Exception as e:
         log.error('No such experiment in the DM system: {:s}'.format(exp_name))
         log.error('   Error: %s' % str(e))
-        log.error('   Have you run experiment create yet?')
+        log.error('   Have you run globus create yet?')
         return []
 
 
@@ -131,7 +131,7 @@ def create_experiment(args):
         if target_beamtime is None:
             log.error('  Could not find beamtime for GUP %s. '
                       'If this is a commissioning run with no proposal, use '
-                      '"experiment create --manual --name <LastName> '
+                      '"globus create --manual --name <LastName> '
                       '--title <Title> --badges <badge1,badge2,...>"'
                       % args.gup_number)
             return None

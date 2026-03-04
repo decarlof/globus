@@ -4,8 +4,8 @@ import smtplib
 
 from email.message import EmailMessage
 
-from experiment import log
-from experiment import dm
+from globus import log
+from globus import dm
 
 
 def message_file_name(args):
@@ -41,7 +41,7 @@ def send_email(args):
 
     users = dm.list_users_this_dm_exp(args)
     if users is None:
-        log.error('   Cannot send email: no DM experiment found. Have you run "experiment create" yet?')
+        log.error('   Cannot send email: no DM experiment found. Have you run "globus create" yet?')
         return False
 
     emails = dm.make_user_email_list(users)

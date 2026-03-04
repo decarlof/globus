@@ -7,8 +7,8 @@ import os
 import subprocess
 from paramiko import SSHClient
 
-from experiment import pv
-from experiment import log
+from globus import pv
+from globus import log
 
 
 def make_directory_name(args):

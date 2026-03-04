@@ -5,9 +5,9 @@ import argparse
 import configparser
 import numpy as np
 from collections import OrderedDict
-from experiment import log
+from globus import log
 
-CONFIG_FILE_NAME = os.path.join(str(pathlib.Path.home()), 'experiment.conf')
+CONFIG_FILE_NAME = os.path.join(str(pathlib.Path.home()), 'globus.conf')
 CREDENTIALS_FILE_NAME = os.path.join(str(pathlib.Path.home()), '.scheduling_credentials')
 
 SECTIONS = OrderedDict()
@@ -294,7 +294,7 @@ def show_config(args):
     """
     args = args.__dict__
 
-    log.warning('Experiment status start')
+    log.warning('Globus status start')
     for section, name in zip(SECTIONS, NICE_NAMES):
         entries = sorted((k for k in args.keys() if k.replace('_', '-') in SECTIONS[section]))
         if entries:
@@ -302,4 +302,4 @@ def show_config(args):
                 value = args[entry] if args[entry] != None else "-"
                 log.info("  {:<16} {}".format(entry, value))
 
-    log.warning('Experiment status end')
+    log.warning('Globus status end')

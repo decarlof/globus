@@ -2,8 +2,8 @@ import datetime as dt
 import pytz
 import json
 import requests
-from experiment import log
-from experiment import authorize
+from globus import log
+from globus import authorize
 
 __author__ = "Alan L Kastengren"
 __copyright__ = "Copyright (c) 2025, UChicago Argonne, LLC."
@@ -68,7 +68,7 @@ def get_beamtime(gup_number, args):
     if not str(gup_number).strip():
         log.error("GUP number is empty — the EPICS PVs are not set for a scheduled experiment.")
         log.error("To create a manual experiment (e.g. for commissioning) run:")
-        log.error("  experiment create --manual --name <LastName> --title <Title> --badges <badge1,badge2,...>")
+        log.error("  globus create --manual --name <LastName> --title <Title> --badges <badge1,badge2,...>")
         return None
     reply = requests.get(api_url, auth=auth)
     if reply.status_code == 404:

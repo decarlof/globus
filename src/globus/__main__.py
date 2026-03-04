@@ -5,13 +5,13 @@ import sys
 import argparse
 from datetime import datetime, timedelta
 
-from experiment import scheduling
+from globus import scheduling
 
-from experiment import config
-from experiment import directories
-from experiment import dm
-from experiment import log
-from experiment import message
+from globus import config
+from globus import directories
+from globus import dm
+from globus import log
+from globus import message
 
 __author__ = "Francesco De Carlo"
 __copyright__ = "Copyright (c) 2019, UChicago Argonne, LLC."
@@ -74,7 +74,7 @@ def create(args):
             if message.yes_or_no('   *** Yes or No'):
                 user_list = dm.make_username_list(args)
             else:
-                log.info("   To add a user run: experiment add-user --badge <badge#>")
+                log.info("   To add a user run: globus add-user --badge <badge#>")
                 return
         log.info('Adding users from the current proposal to the DM experiment.')
     dm.add_users(new_exp, user_list)
@@ -96,7 +96,7 @@ def add_user(args):
         # No badge given on the command line — use the last stored badge from config
         if not args.badge:
             log.info("No --badge entered and no badge stored in config.")
-            log.info("   To add a user run: experiment add-user --badge <badge#>")
+            log.info("   To add a user run: globus add-user --badge <badge#>")
             return
         name = dm.get_user_name_by_badge(args.badge)
         display = f"{name}, badge {args.badge}" if name else f"badge {args.badge}"
@@ -105,10 +105,10 @@ def add_user(args):
         current_users = dm.make_username_list(args)
         if 'd{:d}'.format(args.badge) in current_users:
             log.info(f"   {display} is already on the experiment.")
-            log.info("   To add a different user run: experiment add-user --badge <badge#>")
+            log.info("   To add a different user run: globus add-user --badge <badge#>")
             return
         if not message.yes_or_no('   *** Confirm? Yes or No'):
-            log.info("   To add a different user run: experiment add-user --badge <badge#>")
+            log.info("   To add a different user run: globus add-user --badge <badge#>")
             return
     dm.add_user(args)
 
@@ -129,7 +129,7 @@ def main():
     if not os.path.exists(logs_home):
         os.makedirs(logs_home)
 
-    lfname = logs_home + 'experiment_' + datetime.strftime(datetime.now(), "%Y-%m-%d_%H:%M:%S") + '.log'
+    lfname = logs_home + 'globus_' + datetime.strftime(datetime.now(), "%Y-%m-%d_%H:%M:%S") + '.log'
     log.setup_custom_logger(lfname)
 
 
@@ -220,7 +220,7 @@ def main():
         log.info("Write experiment metadata to tomoScan PVs?")
         if message.yes_or_no('   *** Yes or No'):
             try:
-                from experiment import pv
+                from globus import pv
                 pv.write_experiment_info(args)
                 log.info("   Metadata written to tomoScan PVs")
             except Exception as e:
@@ -269,7 +269,7 @@ def main():
         log.info("Write experiment metadata to tomoScan PVs?")
         if message.yes_or_no('   *** Yes or No'):
             try:
-                from experiment import pv
+                from globus import pv
                 pv.write_experiment_info(args)
                 log.info("   Metadata written to tomoScan PVs")
             except Exception as e:

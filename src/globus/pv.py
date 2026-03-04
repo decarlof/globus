@@ -2,7 +2,7 @@ import datetime
 import pytz
 
 from epics import PV
-from experiment import log
+from globus import log
 
 
 def init_general_PVs(args):
