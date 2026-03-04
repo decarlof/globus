@@ -11,7 +11,6 @@ from experiment import config
 from experiment import directories
 from experiment import dm
 from experiment import log
-from experiment import pv
 from experiment import message
 
 __author__ = "Francesco De Carlo"
@@ -213,18 +212,18 @@ def main():
         args.manual_end    = (ref_date + timedelta(days=14)).strftime('%d-%b-%y')
         log.info(f"Manual experiment: {args.year_month}-{args.pi_last_name}, "
                  f"title: {args.gup_title}")
-    elif args.set != 0:
-        # Past experiment: retrieve info from the scheduling system
+    else:
+        # Query the scheduling system for the run containing today+set days
         beamtimes = scheduling.list_beamtimes(args)
         if not beamtimes:
-            log.error("No beamtimes found for the given --set offset")
+            log.error("No beamtimes found for the current run")
             sys.exit(1)
         elif len(beamtimes) == 1:
             bt = beamtimes[0]
-            log.info(f"Found 1 beamtime in past run: GUP {bt['gup_number']} "
+            log.info(f"Found 1 beamtime in run {bt['run_name']}: GUP {bt['gup_number']} "
                      f"(PI: {bt['pi_last_name']}, {bt['gup_title'][:60]})")
         else:
-            log.info(f"Found {len(beamtimes)} beamtimes in past run {beamtimes[0]['run_name']}:")
+            log.info(f"Found {len(beamtimes)} beamtimes in run {beamtimes[0]['run_name']}:")
             for i, bt in enumerate(beamtimes):
                 print(f"  [{i}] GUP {bt['gup_number']} - PI: {bt['pi_last_name']} - "
                       f"{bt['gup_title'][:70]}")
@@ -247,11 +246,8 @@ def main():
         args.pi_last_name = bt['pi_last_name']
         args.gup_number   = bt['gup_number']
         args.gup_title    = bt['gup_title']
-        log.info(f"Using past experiment: {args.year_month}, "
+        log.info(f"Run {bt['run_name']}: {args.year_month}, "
                  f"PI: {args.pi_last_name}, GUP: {args.gup_number}")
-    else:
-        # Current experiment: read from EPICS PVs
-        args.year_month, args.pi_last_name, args.gup_number, args.gup_title = pv.update_experiment_info(args)
 
     required_args = {
         'year_month': args.year_month,

@@ -31,7 +31,7 @@ SECTIONS['scheduling'] = {
     'set': {     
         'type': float,
         'default': 0,
-        'help': "Offset in days from today (e.g. -1 = yesterday). Selects the APS run period that contains today+offset, then lists all beamtimes in that run for selection. Use 0 (default) to read the current experiment from EPICS PVs"},
+        'help': "Offset in days from today (0 = current run, -1 = yesterday's run). Lists all beamtimes in the APS run period containing today+offset and prompts for selection"},
     'url':{
         'default': 'https://beam-api.aps.anl.gov',
         'type': str,
@@ -146,7 +146,7 @@ SECTIONS['email'] = {
         'help': 'Set to True to send and email to all users listed in the current proposal',
         'action': 'store_true'}}
 
-GLOBUS_PARAMS = ('globus', 'scheduling', 'local', 'epics')
+GLOBUS_PARAMS = ('globus', 'scheduling', 'local')
 
 NICE_NAMES = ('General', 'Scheduling', 'Globus', 'Local', 'Epics', 'e-mail')
 
