@@ -249,6 +249,15 @@ def main():
         log.info(f"Run {bt['run_name']}: {args.year_month}, "
                  f"PI: {args.pi_last_name}, GUP: {args.gup_number}")
 
+        log.info("Write experiment metadata to tomoScan PVs?")
+        if message.yes_or_no('   *** Yes or No'):
+            try:
+                from experiment import pv
+                pv.write_experiment_info(args)
+                log.info("   Metadata written to tomoScan PVs")
+            except Exception as e:
+                log.warning("   Could not write to tomoScan PVs: %s" % str(e))
+
     required_args = {
         'year_month': args.year_month,
         'pi_last_name': args.pi_last_name,

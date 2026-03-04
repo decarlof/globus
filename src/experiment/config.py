@@ -146,7 +146,7 @@ SECTIONS['email'] = {
         'help': 'Set to True to send and email to all users listed in the current proposal',
         'action': 'store_true'}}
 
-GLOBUS_PARAMS = ('globus', 'scheduling', 'local')
+GLOBUS_PARAMS = ('globus', 'scheduling', 'local', 'epics')
 
 NICE_NAMES = ('General', 'Scheduling', 'Globus', 'Local', 'Epics', 'e-mail')
 
