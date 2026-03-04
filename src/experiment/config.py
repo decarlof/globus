@@ -31,7 +31,7 @@ SECTIONS['scheduling'] = {
     'set': {     
         'type': float,
         'default': 0,
-        'help': "Number of +/- number days for the current date. Used for setting user info for past/future user groups"},
+        'help': "Offset in days from today (e.g. -1 = yesterday). Selects the APS run period that contains today+offset, then lists all beamtimes in that run for selection. Use 0 (default) to read the current experiment from EPICS PVs"},
     'url':{
         'default': 'https://beam-api.aps.anl.gov',
         'type': str,
