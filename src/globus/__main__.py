@@ -4,6 +4,7 @@ import os
 import sys
 import argparse
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from globus import scheduling
 
@@ -79,6 +80,22 @@ def create(args):
         log.info('Adding users from the current proposal to the DM experiment.')
     dm.add_users(new_exp, user_list)
 
+def dirs(args):
+    # create directory on detector computer
+    log.info('Making directory on the detector computer {:s}'.format(args.detector))
+    detector_dir_name = directories.create_detector_dir_name(args)
+    remote_server = args.detector_user_name + '@' + args.detector
+    directories.mkdir(remote_server, detector_dir_name)
+
+    # create directory on data analysis computer
+    log.info('Making directory on the analysis computer {:s}'.format(args.analysis))
+    analysis_dir_name = directories.create_analysis_dir_name(args)
+    remote_server = args.analysis_user_name + '@' + args.analysis
+    directories.mkdir(remote_server, analysis_dir_name)
+    # add a directory of analysis_dir_name + '_rec' to match 2025 usage
+    directories.mkdir(remote_server, analysis_dir_name + '_rec')
+
+
 def start_daq(args):
     '''Start a Data Management DAQ on the analysis machine directory.
     '''
@@ -145,6 +162,7 @@ def main():
         ('add-user',     add_user,    globus_params,  "Add a user to the current DM experiment by badge number"),
         ('remove-user',  remove_user, globus_params,  "Remove a user from the current DM experiment"),
         ('email',        email,       globus_params,  "Send email with link to all users on the proposal"),
+        ('dirs',         dirs,        globus_params,  "Create folders on data collection and data analysis computers"),
     ]
 
     subparsers = parser.add_subparsers(title="Commands", metavar='')

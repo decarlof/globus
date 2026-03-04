@@ -5,9 +5,7 @@ Helper functions to check and create directories on remote machines.
 from pathlib import Path
 import os
 import subprocess
-from paramiko import SSHClient
 
-from globus import pv
 from globus import log
 
 
@@ -30,12 +28,11 @@ def create_analysis_dir_name(args):
 
 
 def create_detector_dir_name(args):
-    '''Create a directory in the detector computer.
+    '''Create a directory path for the detector computer.
     '''
     exp_name = make_directory_name(args)
-    # detector_path = Path(args.detector_top_dir).joinpath(args.year_month,exp_name)
     detector_path = Path(args.detector_top_dir).joinpath(exp_name)
-    log.info('Directory on analysis machine: {:s}'.format(str(detector_path)))
+    log.info('Directory on detector computer: {:s}'.format(str(detector_path)))
     return str(detector_path)
 
 
