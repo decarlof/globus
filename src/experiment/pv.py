@@ -1,5 +1,5 @@
 from epics import PV
-from globus import log
+from experiment import log
 import numpy as np
 
 

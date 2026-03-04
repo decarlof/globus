@@ -3,9 +3,9 @@ import datetime
 from dm import ExperimentDsApi, UserDsApi, ExperimentDaqApi
 from dm.common.exceptions.objectAlreadyExists import ObjectAlreadyExists
 
-from globus import log
-from globus import directories
-from globus import scheduling
+from experiment import log
+from experiment import directories
+from experiment import scheduling
 
 exp_api = ExperimentDsApi()
 user_api = UserDsApi()

@@ -2,8 +2,8 @@ import datetime as dt
 import pytz
 import json
 import requests
-from globus import log
-from globus import authorize
+from experiment import log
+from experiment import authorize
 
 __author__ = "Alan L Kastengren"
 __copyright__ = "Copyright (c) 2025, UChicago Argonne, LLC."

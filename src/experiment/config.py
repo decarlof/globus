@@ -5,7 +5,7 @@ import argparse
 import configparser
 import numpy as np
 from collections import OrderedDict
-from globus import log
+from experiment import log
 
 CONFIG_FILE_NAME = os.path.join(str(pathlib.Path.home()), 'experiment.conf')
 CREDENTIALS_FILE_NAME = os.path.join(str(pathlib.Path.home()), '.scheduling_credentials')

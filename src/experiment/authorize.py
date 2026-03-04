@@ -1,6 +1,6 @@
 from requests.auth import HTTPBasicAuth
 
-from globus import log
+from experiment import log
 
 
 __author__ = "Francesco De Carlo"

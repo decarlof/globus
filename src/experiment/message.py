@@ -4,8 +4,8 @@ import smtplib
 
 from email.message import EmailMessage
 
-from globus import log
-from globus import dm
+from experiment import log
+from experiment import dm
 
 
 def message_file_name(args):

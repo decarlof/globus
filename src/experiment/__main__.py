@@ -5,14 +5,14 @@ import sys
 import argparse
 from datetime import datetime, timedelta
 
-from globus import scheduling
+from experiment import scheduling
 
-from globus import config
-from globus import directories
-from globus import dm
-from globus import log
-from globus import pv
-from globus import message
+from experiment import config
+from experiment import directories
+from experiment import dm
+from experiment import log
+from experiment import pv
+from experiment import message
 
 __author__ = "Francesco De Carlo"
 __copyright__ = "Copyright (c) 2019, UChicago Argonne, LLC."
