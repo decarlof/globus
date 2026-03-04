@@ -242,10 +242,14 @@ def main():
                 except (ValueError, EOFError):
                     print("Invalid input. Please enter a number or 'q' to quit.")
 
-        args.year_month   = bt['year_month']
-        args.pi_last_name = bt['pi_last_name']
-        args.gup_number   = bt['gup_number']
-        args.gup_title    = bt['gup_title']
+        args.year_month    = bt['year_month']
+        args.pi_last_name  = bt['pi_last_name']
+        args.pi_first_name = bt['pi_first_name']
+        args.pi_institution = bt['pi_institution']
+        args.pi_email      = bt['pi_email']
+        args.pi_badge      = bt['pi_badge']
+        args.gup_number    = bt['gup_number']
+        args.gup_title     = bt['gup_title']
         log.info(f"Run {bt['run_name']}: {args.year_month}, "
                  f"PI: {args.pi_last_name}, GUP: {args.gup_number}")
 

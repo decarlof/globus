@@ -117,23 +117,35 @@ def list_beamtimes(args):
     for item in reply.json():
         proposal = item['beamtime']['proposal']
         # Find the PI
-        pi_last_name = 'Unknown'
+        pi_last_name   = 'Unknown'
+        pi_first_name  = ''
+        pi_institution = ''
+        pi_email       = ''
+        pi_badge       = ''
         for exp in proposal.get('experimenters', []):
             if exp.get('piFlag') == 'Y':
-                pi_last_name = exp['lastName']
+                pi_last_name   = exp.get('lastName', 'Unknown')
+                pi_first_name  = exp.get('firstName', '')
+                pi_institution = exp.get('institution', '')
+                pi_email       = str(exp.get('email', '')).lower()
+                pi_badge       = str(exp.get('badge', ''))
                 break
 
         start_dt = dt.datetime.fromisoformat(fix_iso(item['startTime']))
         year_month = start_dt.strftime('%Y-%m')
 
         beamtimes.append({
-            'gup_number': str(proposal['gupId']),
-            'gup_title': proposal.get('proposalTitle', ''),
-            'pi_last_name': pi_last_name,
-            'year_month': year_month,
-            'start_time': item['startTime'],
-            'end_time': item['endTime'],
-            'run_name': run_name,
+            'gup_number':    str(proposal['gupId']),
+            'gup_title':     proposal.get('proposalTitle', ''),
+            'pi_last_name':  pi_last_name,
+            'pi_first_name': pi_first_name,
+            'pi_institution': pi_institution,
+            'pi_email':      pi_email,
+            'pi_badge':      pi_badge,
+            'year_month':    year_month,
+            'start_time':    item['startTime'],
+            'end_time':      item['endTime'],
+            'run_name':      run_name,
         })
 
     return beamtimes
